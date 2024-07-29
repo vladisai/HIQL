@@ -33,7 +33,9 @@ def noise(action, pos_std=0.01, rot_std=1):
 
 @hydra.main(config_path="../../conf", config_name="config_data_collection")
 def run_env(cfg):
-    env = hydra.utils.instantiate(cfg.env, show_gui=True, use_vr=False, use_scene_info=True)
+    env = hydra.utils.instantiate(
+        cfg.env, show_gui=True, use_vr=False, use_scene_info=True
+    )
 
     root_dir = Path(__file__).parents[3] / "dataset/task_D_D/training"
 

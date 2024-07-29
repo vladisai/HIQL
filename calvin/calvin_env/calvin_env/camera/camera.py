@@ -40,7 +40,9 @@ class Camera:
         rgb = np.reshape(rgbPixels, (height, width, 4))
         rgb_img = rgb[:, :, :3]
         depth_buffer = np.reshape(depthPixels, [height, width])
-        depth = self.z_buffer_to_real_distance(z_buffer=depth_buffer, far=farval, near=nearval)
+        depth = self.z_buffer_to_real_distance(
+            z_buffer=depth_buffer, far=farval, near=nearval
+        )
         return rgb_img, depth
 
     # Reference: world2pixel

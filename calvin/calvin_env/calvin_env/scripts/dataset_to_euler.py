@@ -13,14 +13,23 @@ save_path.mkdir(parents=True, exist_ok=True)
 for file in tqdm(load_path.glob("*.npz")):
     data = np.load(file)
     robot_obs = data["robot_obs"]
-    robot_obs_euler = np.concatenate([robot_obs[:3], p.getEulerFromQuaternion(robot_obs[3:7]), robot_obs[7:]])
+    robot_obs_euler = np.concatenate(
+        [robot_obs[:3], p.getEulerFromQuaternion(robot_obs[3:7]), robot_obs[7:]]
+    )
     scene_obs = data["scene_obs"]
     scene_obs_euler = scene_obs[:3]
     for i in range(6):
-        scene_obs_euler = np.append(scene_obs_euler, scene_obs[3 + i * 7 : 3 + i * 7 + 3])
-        scene_obs_euler = np.append(scene_obs_euler, p.getEulerFromQuaternion(scene_obs[3 + i * 7 + 3 : 3 + i * 7 + 7]))
+        scene_obs_euler = np.append(
+            scene_obs_euler, scene_obs[3 + i * 7 : 3 + i * 7 + 3]
+        )
+        scene_obs_euler = np.append(
+            scene_obs_euler,
+            p.getEulerFromQuaternion(scene_obs[3 + i * 7 + 3 : 3 + i * 7 + 7]),
+        )
     actions = data["actions"]
-    actions_euler = np.concatenate([actions[:3], p.getEulerFromQuaternion(actions[3:7]), actions[7:]])
+    actions_euler = np.concatenate(
+        [actions[:3], p.getEulerFromQuaternion(actions[3:7]), actions[7:]]
+    )
     data_euler = dict(data.items())
     data_euler["robot_obs"] = robot_obs_euler
     data_euler["scene_obs"] = scene_obs_euler

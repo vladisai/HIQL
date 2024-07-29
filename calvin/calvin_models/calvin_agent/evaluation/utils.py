@@ -16,7 +16,9 @@ hasher = xxhash.xxh32()
 logger = logging.getLogger(__name__)
 
 
-def get_default_model_and_env(train_folder, dataset_path, checkpoint, env=None, lang_embeddings=None, device_id=0):
+def get_default_model_and_env(
+    train_folder, dataset_path, checkpoint, env=None, lang_embeddings=None, device_id=0
+):
     train_cfg_path = Path(train_folder) / ".hydra/config.yaml"
     train_cfg_path = format_sftp_path(train_cfg_path)
     cfg = OmegaConf.load(train_cfg_path)
@@ -34,18 +36,26 @@ def get_default_model_and_env(train_folder, dataset_path, checkpoint, env=None, 
     device = torch.device(f"cuda:{device_id}")
 
     if lang_embeddings is None:
-        lang_embeddings = LangEmbeddings(dataset.abs_datasets_dir, lang_folder, device=device)
+        lang_embeddings = LangEmbeddings(
+            dataset.abs_datasets_dir, lang_folder, device=device
+        )
 
     if env is None:
-        rollout_cfg = OmegaConf.load(Path(__file__).parents[2] / "conf/callbacks/rollout/default.yaml")
-        env = hydra.utils.instantiate(rollout_cfg.env_cfg, dataset, device, show_gui=False)
+        rollout_cfg = OmegaConf.load(
+            Path(__file__).parents[2] / "conf/callbacks/rollout/default.yaml"
+        )
+        env = hydra.utils.instantiate(
+            rollout_cfg.env_cfg, dataset, device, show_gui=False
+        )
 
     checkpoint = format_sftp_path(checkpoint)
     print(f"Loading model from {checkpoint}")
     model = PlayLMP.load_from_checkpoint(checkpoint)
     model.freeze()
     if cfg.model.action_decoder.get("load_action_bounds", False):
-        model.action_decoder._setup_action_bounds(cfg.datamodule.root_data_dir, None, None, True)
+        model.action_decoder._setup_action_bounds(
+            cfg.datamodule.root_data_dir, None, None, True
+        )
     model = model.cuda(device)
     print("Successfully loaded model.")
 
@@ -63,13 +73,20 @@ def join_vis_lang(img, lang_text):
 
 class LangEmbeddings:
     def __init__(self, val_dataset_path, lang_folder, device=torch.device("cuda:0")):
-        embeddings = np.load(Path(val_dataset_path) / lang_folder / "embeddings.npy", allow_pickle=True).item()
+        embeddings = np.load(
+            Path(val_dataset_path) / lang_folder / "embeddings.npy", allow_pickle=True
+        ).item()
         # we want to get the embedding for full sentence, not just a task name
         self.lang_embeddings = {v["ann"][0]: v["emb"] for k, v in embeddings.items()}
         self.device = device
 
     def get_lang_goal(self, task):
-        return {"lang": torch.from_numpy(self.lang_embeddings[task]).to(self.device).squeeze(0).float()}
+        return {
+            "lang": torch.from_numpy(self.lang_embeddings[task])
+            .to(self.device)
+            .squeeze(0)
+            .float()
+        }
 
 
 def imshow_tensor(window, img_tensor, wait=0, resize=True, keypoints=None, text=None):

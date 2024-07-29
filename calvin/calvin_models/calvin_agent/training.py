@@ -8,7 +8,11 @@ from pytorch_lightning.plugins import DDPPlugin
 
 sys.path.insert(0, Path(__file__).absolute().parents[1].as_posix())
 import calvin_agent.models.play_lmp as models_m
-from calvin_agent.utils.utils import get_git_commit_hash, get_last_checkpoint, print_system_env_info
+from calvin_agent.utils.utils import (
+    get_git_commit_hash,
+    get_last_checkpoint,
+    print_system_env_info,
+)
 import hydra
 from omegaconf import DictConfig, ListConfig, OmegaConf
 from pytorch_lightning import Callback, LightningModule, seed_everything, Trainer
@@ -28,12 +32,18 @@ def wrap_train(config_name):
 
         # Load Model
         if chk is not None:
-            model = getattr(models_m, cfg.model["_target_"].split(".")[-1]).load_from_checkpoint(chk.as_posix())
+            model = getattr(
+                models_m, cfg.model["_target_"].split(".")[-1]
+            ).load_from_checkpoint(chk.as_posix())
         else:
             model = hydra.utils.instantiate(cfg.model)
 
         log_rank_0(f"Training with the following config:\n{OmegaConf.to_yaml(cfg)}")
-        log_rank_0("Repo commit hash: {}".format(get_git_commit_hash(Path(hydra.utils.to_absolute_path(__file__)))))
+        log_rank_0(
+            "Repo commit hash: {}".format(
+                get_git_commit_hash(Path(hydra.utils.to_absolute_path(__file__)))
+            )
+        )
         log_rank_0(print_system_env_info())
 
         train_logger = setup_logger(cfg, model)

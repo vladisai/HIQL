@@ -159,7 +159,7 @@ class DiscretePolicy(nn.Module):
 
     @nn.compact
     def __call__(
-            self, observations: jnp.ndarray, temperature: float = 1.0
+        self, observations: jnp.ndarray, temperature: float = 1.0
     ) -> distrax.Distribution:
         outputs = MLP(
             self.hidden_dims,
@@ -170,7 +170,9 @@ class DiscretePolicy(nn.Module):
             self.action_dim, kernel_init=default_init(self.final_fc_init_scale)
         )(outputs)
 
-        distribution = distrax.Categorical(logits=logits / jnp.maximum(1e-6, temperature))
+        distribution = distrax.Categorical(
+            logits=logits / jnp.maximum(1e-6, temperature)
+        )
 
         return distribution
 

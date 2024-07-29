@@ -143,7 +143,9 @@ def get_egl_device_id(cuda_id: int) -> Union[int]:
     for egl_id in range(n):
         my_env = os.environ.copy()
         my_env["EGL_VISIBLE_DEVICE"] = str(egl_id)
-        result = subprocess.run(["./EGL_options.o"], capture_output=True, cwd=dir_path, env=my_env)
+        result = subprocess.run(
+            ["./EGL_options.o"], capture_output=True, cwd=dir_path, env=my_env
+        )
         match = re.search(r"CUDA_DEVICE=[0-9]+", result.stdout.decode("utf-8"))
         if match:
             current_cuda_id = int(match[0].split("=")[1])
@@ -172,7 +174,9 @@ def to_relative_action(actions, robot_obs, max_pos=0.02, max_orn=0.05):
 
 
 def set_egl_device(device):
-    assert "EGL_VISIBLE_DEVICES" not in os.environ, "Do not manually set EGL_VISIBLE_DEVICES"
+    assert (
+        "EGL_VISIBLE_DEVICES" not in os.environ
+    ), "Do not manually set EGL_VISIBLE_DEVICES"
     try:
         cuda_id = device.index if device.type == "cuda" else 0
     except AttributeError:
@@ -212,7 +216,9 @@ def get_episode_lengths(load_dir, num_frames):
     render_start_end_ids = [[0]]
     i = 0
     for frame in range(num_frames):
-        file_path = os.path.abspath(os.path.join(load_dir, f"{str(frame).zfill(12)}.pickle"))
+        file_path = os.path.abspath(
+            os.path.join(load_dir, f"{str(frame).zfill(12)}.pickle")
+        )
         with open(file_path, "rb") as file:
             data = pickle.load(file)
             done = data["done"]

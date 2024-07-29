@@ -22,7 +22,18 @@ REPO_BASE = Path(__file__).parents[2]
 
 
 class PlayTableScene:
-    def __init__(self, objects, data_path, euler_obs, p, cid, global_scaling, surfaces, np_random, **kwargs):
+    def __init__(
+        self,
+        objects,
+        data_path,
+        euler_obs,
+        p,
+        cid,
+        global_scaling,
+        surfaces,
+        np_random,
+        **kwargs,
+    ):
         self.p = p
         self.cid = cid
         self.global_scaling = global_scaling
@@ -58,7 +69,9 @@ class PlayTableScene:
         #     )
 
         for name, obj_cfg in self.object_cfg.get("fixed_objects", {}).items():
-            fixed_obj = FixedObject(name, obj_cfg, self.p, self.cid, self.data_path, self.global_scaling)
+            fixed_obj = FixedObject(
+                name, obj_cfg, self.p, self.cid, self.data_path, self.global_scaling
+            )
 
             if "joints" in obj_cfg:
                 for joint_name, cfg in obj_cfg["joints"].items():
@@ -86,16 +99,22 @@ class PlayTableScene:
                 if button_switch.effect == light.name:
                     button_switch.add_effect(light)
 
-        self.p.loadURDF(os.path.join(self.data_path, "plane/plane.urdf"), physicsClientId=self.cid)
+        self.p.loadURDF(
+            os.path.join(self.data_path, "plane/plane.urdf"), physicsClientId=self.cid
+        )
 
     def reset(self, scene_obs=None):
         """Reset objects and doors to initial position."""
         if scene_obs is None:
-            for obj in itertools.chain(self.doors, self.buttons, self.switches, self.lights):
+            for obj in itertools.chain(
+                self.doors, self.buttons, self.switches, self.lights
+            ):
                 obj.reset()
             self.reset_movable_objects()
         else:
-            door_info, button_info, switch_info, light_info, obj_info = self.parse_scene_obs(scene_obs)
+            door_info, button_info, switch_info, light_info, obj_info = (
+                self.parse_scene_obs(scene_obs)
+            )
 
             for door, state in zip(self.doors, door_info):
                 door.reset(state)
@@ -117,7 +136,9 @@ class PlayTableScene:
         n_lights = len(self.lights)
 
         split_ids = np.cumsum([n_doors, n_buttons, n_switches, n_lights])
-        door_info, button_info, switch_info, light_info, obj_info = np.split(scene_obs, split_ids)
+        door_info, button_info, switch_info, light_info, obj_info = np.split(
+            scene_obs, split_ids
+        )
         assert len(door_info) == n_doors
         assert len(button_info) == n_buttons
         assert len(switch_info) == n_switches
@@ -138,12 +159,20 @@ class PlayTableScene:
             self.p.stepSimulation()
             contact = False
             for obj_a, obj_b in itertools.combinations(self.movable_objects, 2):
-                if np.any(len(self.p.getContactPoints(bodyA=obj_a.uid, bodyB=obj_b.uid, physicsClientId=self.cid))):
+                if np.any(
+                    len(
+                        self.p.getContactPoints(
+                            bodyA=obj_a.uid, bodyB=obj_b.uid, physicsClientId=self.cid
+                        )
+                    )
+                ):
                     contact = True
                     break
             if not contact:
                 return
-        log.error(f"Could not place objects in {num_sampling_iterations} iterations without contacts")
+        log.error(
+            f"Could not place objects in {num_sampling_iterations} iterations without contacts"
+        )
         return
 
     def step(self):
@@ -156,9 +185,13 @@ class PlayTableScene:
         button_states = [button.get_state() for button in self.buttons]
         switch_states = [switch.get_state() for switch in self.switches]
         light_states = [light.get_state() for light in self.lights]
-        object_poses = list(itertools.chain(*[obj.get_state() for obj in self.movable_objects]))
+        object_poses = list(
+            itertools.chain(*[obj.get_state() for obj in self.movable_objects])
+        )
 
-        return np.concatenate([door_states, button_states, switch_states, light_states, object_poses])
+        return np.concatenate(
+            [door_states, button_states, switch_states, light_states, object_poses]
+        )
 
     def get_info(self):
         """

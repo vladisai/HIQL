@@ -19,7 +19,9 @@ class FixedObject(BaseObject):
         if self.num_joints > 0:
             # save link names and ids in dictionary
             links = {
-                self.p.getJointInfo(self.uid, i, physicsClientId=self.cid)[12].decode("utf-8"): i
+                self.p.getJointInfo(self.uid, i, physicsClientId=self.cid)[12].decode(
+                    "utf-8"
+                ): i
                 for i in range(self.num_joints)
             }
             links["base_link"] = -1
@@ -29,13 +31,24 @@ class FixedObject(BaseObject):
         pass
 
     def get_info(self):
-        obj_info = {**self.info_dict, "contacts": self.p.getContactPoints(bodyA=self.uid, physicsClientId=self.cid)}
+        obj_info = {
+            **self.info_dict,
+            "contacts": self.p.getContactPoints(
+                bodyA=self.uid, physicsClientId=self.cid
+            ),
+        }
         return obj_info
 
     def serialize(self):
         joints = (
-            self.p.getJointStates(self.uid, list(range(self.num_joints)), physicsClientId=self.cid)
+            self.p.getJointStates(
+                self.uid, list(range(self.num_joints)), physicsClientId=self.cid
+            )
             if self.num_joints > 0
             else ()
         )
-        return {"uid": self.uid, "info": self.p.getBodyInfo(self.uid, physicsClientId=self.cid), "joints": joints}
+        return {
+            "uid": self.uid,
+            "info": self.p.getBodyInfo(self.uid, physicsClientId=self.cid),
+            "joints": joints,
+        }

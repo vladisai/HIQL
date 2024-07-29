@@ -16,7 +16,8 @@ class Light:
         self.link_id = next(
             i
             for i in range(self.p.getNumJoints(uid, physicsClientId=self.cid))
-            if self.p.getJointInfo(uid, i, physicsClientId=self.cid)[12].decode("utf-8") == self.link
+            if self.p.getJointInfo(uid, i, physicsClientId=self.cid)[12].decode("utf-8")
+            == self.link
         )
         self.color_on = cfg["color"]
         self.color_off = [1, 1, 1, 1]
@@ -42,11 +43,15 @@ class Light:
 
     def turn_on(self):
         self.state = LightState.ON
-        self.p.changeVisualShape(self.uid, self.link_id, rgbaColor=self.color_on, physicsClientId=self.cid)
+        self.p.changeVisualShape(
+            self.uid, self.link_id, rgbaColor=self.color_on, physicsClientId=self.cid
+        )
 
     def turn_off(self):
         self.state = LightState.OFF
-        self.p.changeVisualShape(self.uid, self.link_id, rgbaColor=self.color_off, physicsClientId=self.cid)
+        self.p.changeVisualShape(
+            self.uid, self.link_id, rgbaColor=self.color_off, physicsClientId=self.cid
+        )
 
     def serialize(self):
         return self.get_info()

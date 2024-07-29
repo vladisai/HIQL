@@ -23,7 +23,9 @@ def find_meta(_meta, string):
 
 
 install_requires = [
-    l for l in _read("requirements.txt").split("\n") if l and not l.startswith("#") and not l.startswith("-")
+    l
+    for l in _read("requirements.txt").split("\n")
+    if l and not l.startswith("#") and not l.startswith("-")
 ]
 
 meta = dict(

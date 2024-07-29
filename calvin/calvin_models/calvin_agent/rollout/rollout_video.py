@@ -53,7 +53,9 @@ class RolloutVideo:
             and dist.is_initialized()
             and not self.log_to_file
         ):
-            log.warning("Video logging with tensorboard and ddp can lead to OOM errors.")
+            log.warning(
+                "Video logging with tensorboard and ddp can lead to OOM errors."
+            )
 
     def new_video(self, tag: str, caption: str = None) -> None:
         """
@@ -88,7 +90,9 @@ class RolloutVideo:
         self.videos[-1][:, -1:, not_c, :border, :] = 0
         self.videos[-1][:, -1:, c, -border:, :] = 1
         self.videos[-1][:, -1:, not_c, -border:, :] = 0
-        repeat_frames = torch.repeat_interleave(self.videos[-1][:, -1:], repeats=frames, dim=1)
+        repeat_frames = torch.repeat_interleave(
+            self.videos[-1][:, -1:], repeats=frames, dim=1
+        )
         self.videos[-1] = torch.cat([self.videos[-1], repeat_frames], dim=1)
         self.step_counter += frames
 
@@ -102,7 +106,9 @@ class RolloutVideo:
             rgb_obs: static camera RGB images
         """
         img = rgb_obs.detach().cpu()
-        self.videos[-1] = torch.cat([self.videos[-1], _unnormalize(img)], dim=1)  # shape 1, t, c, h, w
+        self.videos[-1] = torch.cat(
+            [self.videos[-1], _unnormalize(img)], dim=1
+        )  # shape 1, t, c, h, w
         self.step_counter += 1
 
     def add_goal_thumbnail(self, goal_img):
@@ -140,7 +146,9 @@ class RolloutVideo:
         mem1 = torch.cuda.memory_reserved(dist.get_rank())
         torch.cuda.empty_cache()
         mem2 = torch.cuda.memory_reserved(dist.get_rank())
-        log.info(f"GPU: {dist.get_rank()} freed {(mem1 - mem2) / 10**9:.1f}GB of reserved memory")
+        log.info(
+            f"GPU: {dist.get_rank()} freed {(mem1 - mem2) / 10**9:.1f}GB of reserved memory"
+        )
 
     def log(self, global_step: int) -> None:
         """
@@ -188,7 +196,9 @@ class RolloutVideo:
 
     def _plot_video_tb(self, video, tag, global_step):
         video = video.unsqueeze(0)
-        self.logger.experiment.add_video(f"video{tag}", video, global_step=global_step, fps=10)
+        self.logger.experiment.add_video(
+            f"video{tag}", video, global_step=global_step, fps=10
+        )
 
     def _log_videos_to_wandb(self):
         if dist.is_available() and dist.is_initialized():
@@ -209,7 +219,13 @@ class RolloutVideo:
             video_paths = self.video_paths
             captions = self.captions
         for (task, path), caption in zip(video_paths.items(), captions):
-            self.logger.experiment.log({f"video{task}": wandb.Video(path, fps=10, format="gif", caption=caption)})
+            self.logger.experiment.log(
+                {
+                    f"video{task}": wandb.Video(
+                        path, fps=10, format="gif", caption=caption
+                    )
+                }
+            )
             delete_tmp_video(path)
 
     def _log_videos_to_file(self, global_step):
@@ -238,7 +254,9 @@ class RolloutVideo:
     def _prepare_video(video):
         """This logic was mostly taken from tensorboardX"""
         if video.ndim < 4:
-            raise ValueError("Video must be atleast 4 dimensions: time, channels, height, width")
+            raise ValueError(
+                "Video must be atleast 4 dimensions: time, channels, height, width"
+            )
         if video.ndim == 4:
             video = video.reshape(1, *video.shape)
         b, t, c, h, w = video.shape
@@ -253,7 +271,9 @@ class RolloutVideo:
         # pad to nearest power of 2, all at once
         if not is_power2(video.shape[0]):
             len_addition = int(2 ** video.shape[0].bit_length() - video.shape[0])
-            video = np.concatenate((video, np.zeros(shape=(len_addition, t, c, h, w))), axis=0)
+            video = np.concatenate(
+                (video, np.zeros(shape=(len_addition, t, c, h, w))), axis=0
+            )
 
         n_rows = 2 ** ((b.bit_length() - 1) // 2)
         n_cols = video.shape[0] // n_rows

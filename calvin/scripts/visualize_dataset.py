@@ -7,17 +7,27 @@ import numpy as np
 if __name__ == "__main__":
     parser = ArgumentParser(description="Interactive visualization of CALVIN dataset")
     parser.add_argument("path", type=str, help="Path to dir containing scene_info.npy")
-    parser.add_argument("-d", "--data", nargs="*", default=["rgb_static", "rgb_gripper"], help="Data to visualize")
+    parser.add_argument(
+        "-d",
+        "--data",
+        nargs="*",
+        default=["rgb_static", "rgb_gripper"],
+        help="Data to visualize",
+    )
     args = parser.parse_args()
 
     if not Path(args.path).is_dir():
         print(f"Path {args.path} is either not a directory, or does not exist.")
         exit()
 
-    indices = next(iter(np.load(f"{args.path}/scene_info.npy", allow_pickle=True).item().values()))
+    indices = next(
+        iter(np.load(f"{args.path}/scene_info.npy", allow_pickle=True).item().values())
+    )
     indices = list(range(indices[0], indices[1] + 1))
 
-    annotations = np.load(f"{args.path}/lang_annotations/auto_lang_ann.npy", allow_pickle=True).item()
+    annotations = np.load(
+        f"{args.path}/lang_annotations/auto_lang_ann.npy", allow_pickle=True
+    ).item()
     annotations = list(zip(annotations["info"]["indx"], annotations["language"]["ann"]))
 
     idx = 0

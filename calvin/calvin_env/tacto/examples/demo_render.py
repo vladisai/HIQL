@@ -20,7 +20,7 @@ def generate_ball(xyz):
     # Generate ball contact
     R = 0.25
     r = np.minimum(((xv - xyz[0]) ** 2 + (yv - xyz[1]) ** 2) ** 0.5, R)
-    depthmap = (R ** 2 - r ** 2) ** 0.5
+    depthmap = (R**2 - r**2) ** 0.5
 
     # Smooth the surface
     kern = np.ones([5, 5])

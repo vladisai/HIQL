@@ -20,7 +20,11 @@ RELEVANT_BUTTONS = {
 }
 
 
-class ButtonState(collections.namedtuple("ButtonState", ("button_name", "is_down", "was_triggered", "was_released"))):
+class ButtonState(
+    collections.namedtuple(
+        "ButtonState", ("button_name", "is_down", "was_triggered", "was_released")
+    )
+):
     __slots__ = ()
 
     @classmethod
@@ -61,9 +65,11 @@ class VrEvent(
 
     @property
     def device_type(self):
-        return {p.VR_DEVICE_HMD: "hmd", p.VR_DEVICE_CONTROLLER: "controller", p.VR_DEVICE_GENERIC_TRACKER: "generic"}[
-            self.device_type_flag
-        ]
+        return {
+            p.VR_DEVICE_HMD: "hmd",
+            p.VR_DEVICE_CONTROLLER: "controller",
+            p.VR_DEVICE_GENERIC_TRACKER: "generic",
+        }[self.device_type_flag]
 
 
 class VrInput:
@@ -71,7 +77,9 @@ class VrInput:
     pyBullet VR Data Collector
     """
 
-    def __init__(self, vr_controller, limit_angle, visualize_vr_pos, reset_button_queue_len):
+    def __init__(
+        self, vr_controller, limit_angle, visualize_vr_pos, reset_button_queue_len
+    ):
         self.vr_controller_id = vr_controller.vr_controller_id
         self.vr_controller = vr_controller
         self.POSITION = vr_controller.POSITION
@@ -86,7 +94,9 @@ class VrInput:
         else:
             self.limit_angle = None
         self.gripper_position_offset = np.array(vr_controller.gripper_position_offset)
-        self.gripper_orientation_offset = quaternion.from_euler_angles(vr_controller.gripper_orientation_offset)
+        self.gripper_orientation_offset = quaternion.from_euler_angles(
+            vr_controller.gripper_orientation_offset
+        )
         self.visualize_vr_pos = visualize_vr_pos
         self.vr_pos_uid = None
         if visualize_vr_pos:
@@ -107,8 +117,12 @@ class VrInput:
             _ = self.get_vr_action()
 
     def create_vr_pos_visualization_shape(self):
-        visual_shape_id = p.createVisualShape(shapeType=p.GEOM_SPHERE, rgbaColor=[1, 0, 0, 1], radius=0.005)
-        return p.createMultiBody(baseMass=0, baseVisualShapeIndex=visual_shape_id, basePosition=[0, 0, 0])
+        visual_shape_id = p.createVisualShape(
+            shapeType=p.GEOM_SPHERE, rgbaColor=[1, 0, 0, 1], radius=0.005
+        )
+        return p.createMultiBody(
+            baseMass=0, baseVisualShapeIndex=visual_shape_id, basePosition=[0, 0, 0]
+        )
 
     def get_vr_action(self):
         # self._reset_button_pressed = False
@@ -120,10 +134,18 @@ class VrInput:
             for event in vr_events:
                 # Only use one controller
                 # if event[0] == self.vr_controller_id:
-                action = (event[self.POSITION], event[self.ORIENTATION], event[self.ANALOG])
+                action = (
+                    event[self.POSITION],
+                    event[self.ORIENTATION],
+                    event[self.ANALOG],
+                )
 
-                self._reset_button_pressed = event[self.BUTTONS][self.BUTTON_B] & p.VR_BUTTON_IS_DOWN > 0
-                self._start_button_pressed = event[self.BUTTONS][self.BUTTON_A] & p.VR_BUTTON_IS_DOWN > 0
+                self._reset_button_pressed = (
+                    event[self.BUTTONS][self.BUTTON_B] & p.VR_BUTTON_IS_DOWN > 0
+                )
+                self._start_button_pressed = (
+                    event[self.BUTTONS][self.BUTTON_A] & p.VR_BUTTON_IS_DOWN > 0
+                )
                 robot_action = self.vr_action_to_robot_action(action)
 
                 self.update_reset_button_queue()
@@ -160,7 +182,9 @@ class VrInput:
                 p.changeVisualShape(self.vr_pos_uid, -1, rgbaColor=[0, 1, 0, 1])
             if self.reset_button_pressed:
                 p.changeVisualShape(self.vr_pos_uid, -1, rgbaColor=[1, 0, 0, 1])
-            p.resetBasePositionAndOrientation(self.vr_pos_uid, desired_ee_pos, desired_ee_orn)
+            p.resetBasePositionAndOrientation(
+                self.vr_pos_uid, desired_ee_pos, desired_ee_orn
+            )
 
         return desired_ee_pos, desired_ee_orn, gripper_action
 

@@ -23,7 +23,9 @@ def main(cfg):
 
     data_recorder = None
     if cfg.recorder.record:
-        data_recorder = DataRecorder(env, cfg.recorder.record_fps, cfg.recorder.enable_tts)
+        data_recorder = DataRecorder(
+            env, cfg.recorder.record_fps, cfg.recorder.enable_tts
+        )
 
     log.info("Initialization done!")
     log.info("Entering Loop")

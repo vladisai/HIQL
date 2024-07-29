@@ -6,7 +6,11 @@ import os
 from typing import Any
 
 from calvin_agent.evaluation.multistep_sequences import get_sequences
-from calvin_agent.evaluation.utils import get_env_state_for_initial_condition, join_vis_lang, LangEmbeddings
+from calvin_agent.evaluation.utils import (
+    get_env_state_for_initial_condition,
+    join_vis_lang,
+    LangEmbeddings,
+)
 from calvin_agent.rollout.rollout_video import RolloutVideo
 import hydra
 import numpy as np
@@ -46,7 +50,9 @@ def sequences_for_rank(num_sequences):
     num_workers = multiprocessing.cpu_count() // ws
     return [
         seq.tolist()
-        for seq in np.array_split(get_sequences(num_sequences, num_workers=num_workers), ws)[rank][:num_seq_per_gpu]
+        for seq in np.array_split(
+            get_sequences(num_sequences, num_workers=num_workers), ws
+        )[rank][:num_seq_per_gpu]
     ]
 
 
@@ -121,10 +127,14 @@ class RolloutLongHorizon(Callback):
                     self.env = callback.env
                     break
             else:
-                self.env = hydra.utils.instantiate(self.env_cfg, dataset, pl_module.device)
+                self.env = hydra.utils.instantiate(
+                    self.env_cfg, dataset, pl_module.device
+                )
             if self.num_videos > 0:
                 if dist.is_available() and dist.is_initialized():
-                    self.num_videos = divide_across_ranks(self.num_videos, dist.get_world_size(), dist.get_rank())
+                    self.num_videos = divide_across_ranks(
+                        self.num_videos, dist.get_world_size(), dist.get_rank()
+                    )
                 self.rollout_video = RolloutVideo(
                     logger=pl_module.logger,
                     empty_cache=self.empty_cache,
@@ -142,9 +152,19 @@ class RolloutLongHorizon(Callback):
     def on_validation_epoch_end(self, trainer: Trainer, pl_module: LightningModule, *args) -> None:  # type: ignore
         if pl_module.current_epoch == 0 and self.skip_epochs > 0:
             for i in range(1, 6):
-                pl_module.log(f"eval_lh/sr_chain_{i}", torch.tensor(0.0), on_step=False, sync_dist=True)
-            pl_module.log("eval_lh/avg_seq_len", torch.tensor(0.0), on_step=False, sync_dist=True)
-        elif pl_module.current_epoch >= self.skip_epochs and pl_module.current_epoch % self.rollout_freq == 0:
+                pl_module.log(
+                    f"eval_lh/sr_chain_{i}",
+                    torch.tensor(0.0),
+                    on_step=False,
+                    sync_dist=True,
+                )
+            pl_module.log(
+                "eval_lh/avg_seq_len", torch.tensor(0.0), on_step=False, sync_dist=True
+            )
+        elif (
+            pl_module.current_epoch >= self.skip_epochs
+            and pl_module.current_epoch % self.rollout_freq == 0
+        ):
             results = self.evaluate_policy(pl_module)
 
             if self.num_videos > 0:
@@ -157,10 +177,22 @@ class RolloutLongHorizon(Callback):
             for i in range(1, 6):
                 n_success = sum(count[j] for j in reversed(range(i, 6)))
                 sr = n_success / len(results)
-                pl_module.log(f"eval_lh/sr_chain_{i}", torch.tensor(sr), on_step=False, sync_dist=True)
-                log_rank_0(f"{i} / 5 subtasks: {n_success} / {len(results)} sequences, SR: {sr * 100:.1f}%")
+                pl_module.log(
+                    f"eval_lh/sr_chain_{i}",
+                    torch.tensor(sr),
+                    on_step=False,
+                    sync_dist=True,
+                )
+                log_rank_0(
+                    f"{i} / 5 subtasks: {n_success} / {len(results)} sequences, SR: {sr * 100:.1f}%"
+                )
             avg_seq_len = np.mean(results)
-            pl_module.log("eval_lh/avg_seq_len", torch.tensor(avg_seq_len), on_step=False, sync_dist=True)
+            pl_module.log(
+                "eval_lh/avg_seq_len",
+                torch.tensor(avg_seq_len),
+                on_step=False,
+                sync_dist=True,
+            )
             log_rank_0(f"Average successful sequence length: {avg_seq_len:.1f}")
             print()
 
@@ -168,7 +200,9 @@ class RolloutLongHorizon(Callback):
         results = []
         for i, (initial_state, eval_sequence) in enumerate(self.eval_sequences):
             record = i < self.num_videos
-            result = self.evaluate_sequence(model, initial_state, eval_sequence, record, i)
+            result = self.evaluate_sequence(
+                model, initial_state, eval_sequence, record, i
+            )
             results.append(result)
             if record:
                 self.rollout_video.write_to_tmp()
@@ -219,7 +253,9 @@ class RolloutLongHorizon(Callback):
                 # update video
                 self.rollout_video.update(obs["rgb_obs"]["rgb_static"])
             # check if current step solves a task
-            current_task_info = self.task_checker.get_task_info_for_set(start_info, current_info, {subtask})
+            current_task_info = self.task_checker.get_task_info_for_set(
+                start_info, current_info, {subtask}
+            )
             if len(current_task_info) > 0:
                 success = True
                 break

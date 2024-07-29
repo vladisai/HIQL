@@ -38,7 +38,15 @@ class MixedIK:
 
             self.get_fk = get_fk
             self.ik_fast = IKfast(
-                robot_uid, cid, rp, ll_real, ul_real, base_position, base_orientation, weights, num_angles
+                robot_uid,
+                cid,
+                rp,
+                ll_real,
+                ul_real,
+                base_position,
+                base_orientation,
+                weights,
+                num_angles,
             )
         self.tcp_link_id = tcp_link_id
         self.ll = ll
@@ -67,7 +75,11 @@ class MixedIK:
             )
         else:
             jnt_ps = p.calculateInverseKinematics(
-                self.robot_uid, self.tcp_link_id, desired_ee_pos, desired_ee_orn, physicsClientId=self.cid
+                self.robot_uid,
+                self.tcp_link_id,
+                desired_ee_pos,
+                desired_ee_orn,
+                physicsClientId=self.cid,
             )
         # clip joint positions outside the joint ranges
         jnt_ps = np.clip(jnt_ps[: self.num_dof], self.ll_real, self.ul_real)
@@ -97,7 +109,9 @@ class MixedIK:
         return list(zip(*p.getJointStates(self.robot_uid, range(self.num_dof))))[0]
 
     def get_ik(self, target_pos, target_orn):
-        if self.is_using_IK_fast and not self.pose_within_threshold(target_pos, target_orn, self.get_joint_states()):
+        if self.is_using_IK_fast and not self.pose_within_threshold(
+            target_pos, target_orn, self.get_joint_states()
+        ):
             q_ik_fast = self.ik_fast.get_ik_solution(target_pos, target_orn)
             if q_ik_fast is not None:
                 self.is_using_IK_fast = True
@@ -108,7 +122,9 @@ class MixedIK:
                 return q_bullet
         self.is_using_IK_fast = False
         q_bullet = self.get_bullet_ik(target_pos, target_orn)
-        if self.use_ik_fast and not self.pose_within_threshold(target_pos, target_orn, q_bullet):
+        if self.use_ik_fast and not self.pose_within_threshold(
+            target_pos, target_orn, q_bullet
+        ):
             q_ik_fast = self.ik_fast.get_ik_solution(target_pos, target_orn)
             if q_ik_fast is not None:
                 self.is_using_IK_fast = True

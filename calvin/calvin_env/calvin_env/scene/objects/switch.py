@@ -17,13 +17,16 @@ class Switch:
         joint_index = next(
             i
             for i in range(self.p.getNumJoints(uid, physicsClientId=self.cid))
-            if self.p.getJointInfo(uid, i, physicsClientId=self.cid)[1].decode("utf-8") == name
+            if self.p.getJointInfo(uid, i, physicsClientId=self.cid)[1].decode("utf-8")
+            == name
         )
         self.joint_index = joint_index
         self.uid = uid
         self.initial_state = cfg["initial_state"]
         self.effect = cfg["effect"]
-        self.ll, self.ul = self.p.getJointInfo(uid, joint_index, physicsClientId=self.cid)[8:10]
+        self.ll, self.ul = self.p.getJointInfo(
+            uid, joint_index, physicsClientId=self.cid
+        )[8:10]
         self.trigger_threshold = (self.ll + self.ul) / 2
         self.p.setJointMotorControl2(
             self.uid,
@@ -64,7 +67,11 @@ class Switch:
 
     def get_state(self):
         """return button joint state"""
-        return float(self.p.getJointState(self.uid, self.joint_index, physicsClientId=self.cid)[0])
+        return float(
+            self.p.getJointState(self.uid, self.joint_index, physicsClientId=self.cid)[
+                0
+            ]
+        )
 
     def get_info(self):
         return {"joint_state": self.get_state(), "logical_state": self.state.value}

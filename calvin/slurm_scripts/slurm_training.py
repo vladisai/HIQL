@@ -12,10 +12,14 @@ from setuptools import sandbox
 default_log_dir = f"/home/{os.environ['USER']}/logs" if "USER" in os.environ else "/tmp"
 if default_log_dir == "/tmp":
     print("CAUTION: logging to /tmp")
-parser = argparse.ArgumentParser(description="Parse slurm parameters and hydra config overrides")
+parser = argparse.ArgumentParser(
+    description="Parse slurm parameters and hydra config overrides"
+)
 
 parser.add_argument("--script", type=str, default="./sbatch_lfp.sh")
-parser.add_argument("--train_file", type=str, default="../calvin_models/calvin_agent/training.py")
+parser.add_argument(
+    "--train_file", type=str, default="../calvin_models/calvin_agent/training.py"
+)
 parser.add_argument("-l", "--log_dir", type=str, default=default_log_dir)
 parser.add_argument("-j", "--job_name", type=str, default="play_training")
 parser.add_argument("-g", "--gpus", type=int, default=1)
@@ -33,7 +37,10 @@ assert np.all(["hydra.run.dir" not in arg for arg in unknownargs])
 assert np.all(["log_dir" not in arg for arg in unknownargs])
 assert np.all(["hydra.sweep.dir" not in arg for arg in unknownargs])
 
-log_dir = Path(args.log_dir).absolute() / f'{datetime.datetime.now().strftime("%Y-%m-%d/%H-%M-%S")}_{args.job_name}'
+log_dir = (
+    Path(args.log_dir).absolute()
+    / f'{datetime.datetime.now().strftime("%Y-%m-%d/%H-%M-%S")}_{args.job_name}'
+)
 os.makedirs(log_dir)
 args.script = Path(args.script).absolute()
 args.train_file = Path(args.train_file).absolute()
@@ -115,7 +122,9 @@ def create_eval_script():
     eval_sbatch_script = Path("./sbatch_eval.sh").absolute()
     eval_file = args.train_file.parent / "evaluation/evaluate_policy.py"
 
-    dataset_path = next(filter(lambda x: x.split("=")[0] == "datamodule.root_data_dir", unknownargs)).split("=")[1]
+    dataset_path = next(
+        filter(lambda x: x.split("=")[0] == "datamodule.root_data_dir", unknownargs)
+    ).split("=")[1]
 
     eval_cmd = ["sbatch"]
     eval_job_opts = {

@@ -25,7 +25,9 @@ class PlanProposalNetwork(nn.Module):
         self.in_features = self.perceptual_features + self.latent_goal_features
         self.act_fn = getattr(nn, activation_function)()
         self.fc_model = nn.Sequential(
-            nn.Linear(in_features=self.in_features, out_features=2048),  # shape: [N, 136]
+            nn.Linear(
+                in_features=self.in_features, out_features=2048
+            ),  # shape: [N, 136]
             self.act_fn,
             nn.Linear(in_features=2048, out_features=2048),
             self.act_fn,
@@ -34,10 +36,16 @@ class PlanProposalNetwork(nn.Module):
             nn.Linear(in_features=2048, out_features=2048),
             self.act_fn,
         )
-        self.mean_fc = nn.Linear(in_features=2048, out_features=self.plan_features)  # shape: [N, 2048]
-        self.variance_fc = nn.Linear(in_features=2048, out_features=self.plan_features)  # shape: [N, 2048]
+        self.mean_fc = nn.Linear(
+            in_features=2048, out_features=self.plan_features
+        )  # shape: [N, 2048]
+        self.variance_fc = nn.Linear(
+            in_features=2048, out_features=self.plan_features
+        )  # shape: [N, 2048]
 
-    def forward(self, initial_percep_emb: torch.Tensor, latent_goal: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, initial_percep_emb: torch.Tensor, latent_goal: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         x = torch.cat([initial_percep_emb, latent_goal], dim=-1)
         x = self.fc_model(x)
         mean = self.mean_fc(x)

@@ -27,6 +27,7 @@ def plotly_fig2array(fig):
 
 class TSNEPlot(Callback):
     from MulticoreTSNE import MulticoreTSNE as TSNE
+
     def __init__(self, perplexity, n_jobs, plot_percentage, opacity, marker_size):
         self.perplexity = perplexity
         self.n_jobs = n_jobs
@@ -49,7 +50,9 @@ class TSNEPlot(Callback):
         self.sampled_plans.append(outputs["sampled_plan_pp_vis"])  # type: ignore
         self.all_idx.append(outputs["idx_vis"])  # type: ignore
 
-    def on_validation_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
+    def on_validation_epoch_end(
+        self, trainer: Trainer, pl_module: LightningModule
+    ) -> None:
         if pl_module.global_step > 0:
             if self.task_labels is None:
                 self._create_task_labels(trainer)
@@ -77,7 +80,9 @@ class TSNEPlot(Callback):
                 )
 
     def _get_tsne(self, sampled_plans):
-        x_tsne = TSNE(perplexity=self.perplexity, n_jobs=self.n_jobs).fit_transform(sampled_plans.view(-1, 256).cpu())
+        x_tsne = TSNE(perplexity=self.perplexity, n_jobs=self.n_jobs).fit_transform(
+            sampled_plans.view(-1, 256).cpu()
+        )
         return x_tsne
 
     def _create_tsne_figure(self, label_list, x_tsne, all_idx, step, logger, name):
@@ -85,14 +90,20 @@ class TSNEPlot(Callback):
         # because with ddp, data doesn't come ordered anymore
         labels = label_list[torch.flatten(all_idx).cpu()]
         non_task_ids = np.random.choice(
-            n := np.where(labels == -1)[0], replace=False, size=int(len(n) * self.plot_percentage)
+            n := np.where(labels == -1)[0],
+            replace=False,
+            size=int(len(n) * self.plot_percentage),
         )
         task_ids = np.random.choice(
-            n := np.where(labels != -1)[0], replace=False, size=int(len(n) * self.plot_percentage)
+            n := np.where(labels != -1)[0],
+            replace=False,
+            size=int(len(n) * self.plot_percentage),
         )
         tasks = [self.id_to_task[i] for i in labels[task_ids]]
         symbol_seq = ["circle", "square", "diamond", "cross"]
-        assert x_tsne.shape[0] == len(labels), "plt X shape {}, label len {}".format(x_tsne.shape[0], len(labels))
+        assert x_tsne.shape[0] == len(labels), "plt X shape {}, label len {}".format(
+            x_tsne.shape[0], len(labels)
+        )
 
         fig = go.Figure()
         fig.add_trace(
@@ -128,10 +139,15 @@ class TSNEPlot(Callback):
 
     def _create_task_labels(self, trainer):
         for callback in trainer.callbacks:
-            if isinstance(callback, Rollout) and callback.full_task_to_id_dict is not None:
+            if (
+                isinstance(callback, Rollout)
+                and callback.full_task_to_id_dict is not None
+            ):
                 self.task_to_id = callback.tasks.task_to_id
                 self.id_to_task = callback.tasks.id_to_task
-                self.task_labels = np.zeros(len(trainer.datamodule.val_datasets["vis"])) - 1
+                self.task_labels = (
+                    np.zeros(len(trainer.datamodule.val_datasets["vis"])) - 1
+                )
                 if not len(callback.full_task_to_id_dict):
                     self.task_labels = None
                     log.warning("No tasks found for tsne plot.")

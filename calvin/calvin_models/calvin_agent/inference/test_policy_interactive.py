@@ -14,7 +14,9 @@ from pytorch_lightning import seed_everything
 logger = logging.getLogger(__name__)
 
 
-def rollout(model, episode, env, tasks, demo_task_counter, live_task_counter, cfg, sbert):
+def rollout(
+    model, episode, env, tasks, demo_task_counter, live_task_counter, cfg, sbert
+):
     """
     Args:
         model: PlayLMP model
@@ -73,10 +75,14 @@ def rollout(model, episode, env, tasks, demo_task_counter, live_task_counter, cf
             if cfg.visualize:
                 imshow_tensor(lang_input[0], goal_img, wait=1)
                 imshow_tensor("current_img", current_img_obs[0], wait=1, keypoints=kps)
-                imshow_tensor("dataset_img", rgb_obs[0][i, np.clip(step, 0, seq_len_max)], wait=1)
+                imshow_tensor(
+                    "dataset_img", rgb_obs[0][i, np.clip(step, 0, seq_len_max)], wait=1
+                )
 
             # use plan to predict actions with current observations
-            action = model.predict_with_plan(current_img_obs, current_state_obs, latent_goal, plan)
+            action = model.predict_with_plan(
+                current_img_obs, current_state_obs, latent_goal, plan
+            )
             obs, _, _, current_info = env.step(action)
             # check if current step solves a task
             current_task_info = tasks.get_task_info(start_info, current_info)
@@ -110,7 +116,9 @@ def get_checkpoint(cfg):
     try:
         checkpoint = cfg.load_checkpoint
     except MissingMandatoryValue:
-        checkpoint = sorted((Path(cfg.train_folder) / "saved_models").glob("*.ckpt"), reverse=True)[0]
+        checkpoint = sorted(
+            (Path(cfg.train_folder) / "saved_models").glob("*.ckpt"), reverse=True
+        )[0]
     return checkpoint
 
 
@@ -152,7 +160,10 @@ def test_policy(input_cfg: DictConfig) -> None:
     # dataloader = data_module.train_dataloader()
 
     env = hydra.utils.instantiate(
-        cfg.rollout.env_cfg, dataloader.dataset.datasets["lang"].dataset_loader, "cpu", show_gui=False
+        cfg.rollout.env_cfg,
+        dataloader.dataset.datasets["lang"].dataset_loader,
+        "cpu",
+        show_gui=False,
     )
     sbert = SBert("mpnet")
     tasks = hydra.utils.instantiate(cfg.rollout.task_cfg)
@@ -166,7 +177,16 @@ def test_policy(input_cfg: DictConfig) -> None:
     demo_task_counter = Counter()  # type: typing.Counter[str]
     live_task_counter = Counter()  # type: typing.Counter[str]
     for i, episode in enumerate(dataloader):
-        rollout(model, episode["vis"], env, tasks, demo_task_counter, live_task_counter, cfg, sbert)
+        rollout(
+            model,
+            episode["vis"],
+            env,
+            tasks,
+            demo_task_counter,
+            live_task_counter,
+            cfg,
+            sbert,
+        )
 
 
 if __name__ == "__main__":

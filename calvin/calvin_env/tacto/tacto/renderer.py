@@ -203,7 +203,7 @@ class Renderer:
             z = np.linspace(Z0 - H / 2, Z0 + H / 2, M)
             yy, zz = np.meshgrid(y, z)
 
-            h = R - np.maximum(0, R ** 2 - (yy - Y0) ** 2 - (zz - Z0) ** 2) ** 0.5
+            h = R - np.maximum(0, R**2 - (yy - Y0) ** 2 - (zz - Z0) ** 2) ** 0.5
             xx = X0 - zrange * h / h.max()
 
             gel_trimesh = self._generate_trimesh_from_depth(xx)
@@ -277,10 +277,12 @@ class Renderer:
             cami = conf_cam[i]
 
             camera = pyrender.PerspectiveCamera(
-                yfov=np.deg2rad(cami.yfov), znear=cami.znear,
+                yfov=np.deg2rad(cami.yfov),
+                znear=cami.znear,
             )
             camera_zero_pose = euler2matrix(
-                angles=np.deg2rad(cami.orientation), translation=cami.position,
+                angles=np.deg2rad(cami.orientation),
+                translation=cami.position,
             )
             self.camera_zero_poses.append(camera_zero_pose)
 
@@ -484,7 +486,11 @@ class Renderer:
         return 0
 
     def adjust_with_force(
-        self, camera_pos, camera_ori, normal_forces, object_poses,
+        self,
+        camera_pos,
+        camera_ori,
+        normal_forces,
+        object_poses,
     ):
         """
         Adjust object pose with normal force feedback
@@ -523,7 +529,7 @@ class Renderer:
                 obj_pos = np.array(obj_pos)
 
                 direction = camera_pos - obj_pos
-                direction = direction / (np.sum(direction ** 2) ** 0.5 + 1e-6)
+                direction = direction / (np.sum(direction**2) ** 0.5 + 1e-6)
                 obj_pos = obj_pos + offset * self.max_deformation * direction
 
             self.update_object_pose(obj_name, obj_pos, objOri)
@@ -562,7 +568,10 @@ class Renderer:
                 camera_ori = R.from_matrix(camera_pose[:3, :3]).as_quat()
 
                 self.adjust_with_force(
-                    camera_pos, camera_ori, normal_forces, object_poses,
+                    camera_pos,
+                    camera_ori,
+                    normal_forces,
+                    object_poses,
                 )
 
             color, depth = self.r.render(self.scene, flags=self.flags_render)

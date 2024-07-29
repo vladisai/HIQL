@@ -39,7 +39,9 @@ class StaticCamera(Camera):
         self.width = width
         self.height = height
         self.viewMatrix = p.computeViewMatrix(
-            cameraEyePosition=look_from, cameraTargetPosition=look_at, cameraUpVector=self.up_vector
+            cameraEyePosition=look_from,
+            cameraTargetPosition=look_at,
+            cameraUpVector=self.up_vector,
         )
         self.projectionMatrix = p.computeProjectionMatrixFOV(
             fov=fov, aspect=aspect, nearVal=self.nearval, farVal=self.farval
@@ -54,7 +56,9 @@ class StaticCamera(Camera):
         forward = np.array(info[5])
         look_from = look_at - dist * forward
         self.viewMatrix = p.computeViewMatrix(
-            cameraEyePosition=look_from, cameraTargetPosition=look_at, cameraUpVector=self.up_vector
+            cameraEyePosition=look_from,
+            cameraTargetPosition=look_at,
+            cameraUpVector=self.up_vector,
         )
         look_from = [float(x) for x in look_from]
         look_at = [float(x) for x in look_at]

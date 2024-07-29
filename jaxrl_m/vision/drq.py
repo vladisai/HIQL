@@ -15,7 +15,7 @@ def default_init(scale: Optional[float] = jnp.sqrt(2)):
 class DrqEncoder(nn.Module):
     features: Sequence[int] = (32, 32, 32, 32)
     strides: Sequence[int] = (2, 1, 1, 1)
-    padding: str = 'VALID'
+    padding: str = "VALID"
     layer_norm: bool = False
 
     @nn.compact
@@ -24,11 +24,13 @@ class DrqEncoder(nn.Module):
 
         x = observations.astype(jnp.float32) / 255.0
         for features, stride in zip(self.features, self.strides):
-            x = nn.Conv(features,
-                        kernel_size=(3, 3),
-                        strides=(stride, stride),
-                        kernel_init=default_init(),
-                        padding=self.padding)(x)
+            x = nn.Conv(
+                features,
+                kernel_size=(3, 3),
+                strides=(stride, stride),
+                kernel_init=default_init(),
+                padding=self.padding,
+            )(x)
             if self.layer_norm:
                 conv_out = nn.LayerNorm()(x)
             x = nn.relu(x)
@@ -41,5 +43,5 @@ class DrqEncoder(nn.Module):
 
 
 drq_configs = {
-    'drq': DrqEncoder,
+    "drq": DrqEncoder,
 }

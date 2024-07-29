@@ -45,7 +45,11 @@ def select_longest(all_task_ids, num, min_window_size, max_window_size):
     """
     sorted_ids = sorted(
         all_task_ids,
-        key=partial(get_validation_window_size, min_window_size=min_window_size, max_window_size=max_window_size),
+        key=partial(
+            get_validation_window_size,
+            min_window_size=min_window_size,
+            max_window_size=max_window_size,
+        ),
         reverse=True,
     )
     return sorted_ids[:num]
@@ -103,7 +107,9 @@ class Rollout(Callback):
         self.add_goal_thumbnail = add_goal_thumbnail
         self.lang_folder = lang_folder
         self.pick_task_ids = partial(
-            eval(id_selection_strategy), min_window_size=min_window_size, max_window_size=max_window_size
+            eval(id_selection_strategy),
+            min_window_size=min_window_size,
+            max_window_size=max_window_size,
         )
 
     def on_validation_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
@@ -115,11 +121,16 @@ class Rollout(Callback):
             from calvin_agent.rollout.rollout_long_horizon import RolloutLongHorizon
 
             for callback in trainer.callbacks:
-                if isinstance(callback, RolloutLongHorizon) and callback.env is not None:
+                if (
+                    isinstance(callback, RolloutLongHorizon)
+                    and callback.env is not None
+                ):
                     self.env = callback.env
                     break
             else:
-                self.env = hydra.utils.instantiate(self.env_cfg, dataset, pl_module.device)
+                self.env = hydra.utils.instantiate(
+                    self.env_cfg, dataset, pl_module.device
+                )
             if self.video:
                 self.rollout_video = RolloutVideo(
                     logger=pl_module.logger,
@@ -128,9 +139,10 @@ class Rollout(Callback):
                     save_dir=self.save_dir,
                 )
             self.embeddings = (
-                np.load(dataset.abs_datasets_dir / self.lang_folder / "embeddings.npy", allow_pickle=True,).reshape(
-                    -1
-                )[0]
+                np.load(
+                    dataset.abs_datasets_dir / self.lang_folder / "embeddings.npy",
+                    allow_pickle=True,
+                ).reshape(-1)[0]
                 if "lang" in self.modalities
                 else None
             )
@@ -145,10 +157,15 @@ class Rollout(Callback):
         dataloader_idx: int,
     ) -> None:
         batch = batch["vis"]
-        if pl_module.current_epoch >= self.skip_epochs and (pl_module.current_epoch + 1) % self.rollout_freq == 0:
+        if (
+            pl_module.current_epoch >= self.skip_epochs
+            and (pl_module.current_epoch + 1) % self.rollout_freq == 0
+        ):
             # in first validation epoch collect groundtruth task information of current validation batch
             if self.task_to_id_dict is None:
-                outputs["task_ids"], outputs["batch_seq_ids"] = self.get_task_info_of_batch(batch)
+                outputs["task_ids"], outputs["batch_seq_ids"] = (
+                    self.get_task_info_of_batch(batch)
+                )
             else:
                 # do rollout for batch
                 outputs["rollout_task_counter"] = self.env_rollouts(batch, pl_module)
@@ -159,8 +176,13 @@ class Rollout(Callback):
         outputs = [self.outputs]
 
         if pl_module.current_epoch == 0:
-            pl_module.log("tasks/average_sr", torch.tensor(0.0), on_step=False, sync_dist=True)
-        elif pl_module.current_epoch >= self.skip_epochs and (pl_module.current_epoch + 1) % self.rollout_freq == 0:
+            pl_module.log(
+                "tasks/average_sr", torch.tensor(0.0), on_step=False, sync_dist=True
+            )
+        elif (
+            pl_module.current_epoch >= self.skip_epochs
+            and (pl_module.current_epoch + 1) % self.rollout_freq == 0
+        ):
             # after first validation epoch, create task lookup dictionaries
             if self.task_to_id_dict is None:
                 self.build_task_dict(outputs, pl_module)
@@ -171,13 +193,16 @@ class Rollout(Callback):
                 # collect the task rollout counters of all validation batches and sum across tasks
                 acc_score = 0
                 for mod in self.modalities:
-                    rollout_task_counter = reduce(add, [x["rollout_task_counter"][mod] for x in outputs[0]])
+                    rollout_task_counter = reduce(
+                        add, [x["rollout_task_counter"][mod] for x in outputs[0]]
+                    )
                     if dist.is_available() and dist.is_initialized():
                         rollout_task_counter = torch.sum(
                             pl_module.all_gather(rollout_task_counter), dim=0
                         )  # shape: (num_tasks,)
                     score = (
-                        torch.sum(rollout_task_counter) / torch.sum(self.groundtruth_task_counter)
+                        torch.sum(rollout_task_counter)
+                        / torch.sum(self.groundtruth_task_counter)
                         if torch.sum(self.groundtruth_task_counter) > 0
                         else torch.tensor(0.0)
                     )
@@ -196,7 +221,8 @@ class Rollout(Callback):
                             # log to tensorboard
                             pl_module.log(
                                 f"tasks/{self.tasks.id_to_task[i]}_{mod}",
-                                rollout_task_counter[i] / self.groundtruth_task_counter[i],
+                                rollout_task_counter[i]
+                                / self.groundtruth_task_counter[i],
                                 on_step=False,
                                 sync_dist=True,
                             )
@@ -227,10 +253,12 @@ class Rollout(Callback):
             self.groundtruth_task_counter: Tensor of shape (n_tasks,) that counts the number of successful groundtruth
                                            tasks per task.
         """
-        batch_seq_ids = torch.LongTensor(reduce(add, [x["batch_seq_ids"] for x in validation_step_outputs[0]])).to(
-            self.device
-        )
-        task_ids = torch.LongTensor(reduce(add, [x["task_ids"] for x in validation_step_outputs[0]])).to(self.device)
+        batch_seq_ids = torch.LongTensor(
+            reduce(add, [x["batch_seq_ids"] for x in validation_step_outputs[0]])
+        ).to(self.device)
+        task_ids = torch.LongTensor(
+            reduce(add, [x["task_ids"] for x in validation_step_outputs[0]])
+        ).to(self.device)
 
         if dist.is_available() and dist.is_initialized():
             # since task may be distributed unevenly across the validation splits on different gpus we have to truncate
@@ -241,7 +269,9 @@ class Rollout(Callback):
             len_t = int(torch.min(pl_module.all_gather(len_t)))
             batch_seq_ids = batch_seq_ids[:len_b]
             task_ids = task_ids[:len_t]
-            batch_seq_ids = pl_module.all_gather(batch_seq_ids)  # shape: (world_size, validation_sequence_ids)
+            batch_seq_ids = pl_module.all_gather(
+                batch_seq_ids
+            )  # shape: (world_size, validation_sequence_ids)
             task_ids = pl_module.all_gather(task_ids)
         # transpose and flatten is used to later distribute tasks evenly among gpus when using ddp
         batch_seq_ids = batch_seq_ids.cpu().numpy().T.flatten()
@@ -253,10 +283,14 @@ class Rollout(Callback):
         n_tasks = self.num_rollouts_per_task
         for task_id in unique_task_ids:
             all_task_ids = batch_seq_ids[np.where(task_ids == task_id)[0]]
-            self.task_to_id_dict[self.tasks.id_to_task[task_id]] = self.pick_task_ids(all_task_ids, n_tasks)
+            self.task_to_id_dict[self.tasks.id_to_task[task_id]] = self.pick_task_ids(
+                all_task_ids, n_tasks
+            )
             self.full_task_to_id_dict[self.tasks.id_to_task[task_id]] = all_task_ids
         self.id_to_task_dict = defaultdict(set)
-        self.groundtruth_task_counter = torch.LongTensor([0] * self.tasks.num_tasks)  # .to(self.device)
+        self.groundtruth_task_counter = torch.LongTensor(
+            [0] * self.tasks.num_tasks
+        )  # .to(self.device)
         for k, v in self.task_to_id_dict.items():
             for i in v:
                 self.id_to_task_dict[i] |= {k}
@@ -290,7 +324,9 @@ class Rollout(Callback):
         counter = {}
 
         for mod in self.modalities:
-            rollout_task_counter = torch.LongTensor([0] * self.tasks.num_tasks).to(self.device)
+            rollout_task_counter = torch.LongTensor([0] * self.tasks.num_tasks).to(
+                self.device
+            )
             for i, global_idx in enumerate(idx):
                 # check if sequence should be evaluated with rollout
                 if int(global_idx) in self.id_to_task_dict:
@@ -306,7 +342,11 @@ class Rollout(Callback):
                         task_embeddings = self.embeddings[_task]["emb"]
                         language_instruction = self.embeddings[_task]["ann"][0]
                         goal = {
-                            "lang": torch.tensor(task_embeddings[np.random.randint(task_embeddings.shape[0])])
+                            "lang": torch.tensor(
+                                task_embeddings[
+                                    np.random.randint(task_embeddings.shape[0])
+                                ]
+                            )
                             .to(self.device)
                             .float()
                         }
@@ -320,10 +360,17 @@ class Rollout(Callback):
 
                     # only save video of first task execution per rollout
                     record_video = self.video and np.any(
-                        np.asarray([int(global_idx) == self.task_to_id_dict[task][0] for task in groundtruth_task])
+                        np.asarray(
+                            [
+                                int(global_idx) == self.task_to_id_dict[task][0]
+                                for task in groundtruth_task
+                            ]
+                        )
                     )
                     if record_video:
-                        self.rollout_video.new_video(tag=get_video_tag(groundtruth_task, mod))
+                        self.rollout_video.new_video(
+                            tag=get_video_tag(groundtruth_task, mod)
+                        )
                     pl_module.reset()  # type: ignore
                     success = False
                     for step in range(self.ep_len):
@@ -333,7 +380,9 @@ class Rollout(Callback):
                             # update video
                             self.rollout_video.update(obs["rgb_obs"]["rgb_static"])
                         # check if current step solves a task
-                        current_task_info = self.tasks.get_task_info_for_set(start_info, current_info, groundtruth_task)
+                        current_task_info = self.tasks.get_task_info_for_set(
+                            start_info, current_info, groundtruth_task
+                        )
                         # check if a task was achieved and if that task is a subset of the original tasks
                         # we do not just want to solve any task, we want to solve the task that was proposed
                         if len(current_task_info) > 0:
@@ -347,9 +396,13 @@ class Rollout(Callback):
                     if record_video:
                         if self.add_goal_thumbnail:
                             if mod == "lang":
-                                self.rollout_video.add_language_instruction(language_instruction)
+                                self.rollout_video.add_language_instruction(
+                                    language_instruction
+                                )
                             else:
-                                self.rollout_video.add_goal_thumbnail(rgb_obs["rgb_static"][i, -1])
+                                self.rollout_video.add_goal_thumbnail(
+                                    rgb_obs["rgb_static"][i, -1]
+                                )
                         self.rollout_video.draw_outcome(success)
                         self.rollout_video.write_to_tmp()
 
@@ -410,8 +463,13 @@ class Rollout(Callback):
         return checkpoint
 
     def on_load_checkpoint(  # type: ignore
-        self, trainer: Trainer, pl_module: LightningModule, callback_state: Dict[str, Any]
+        self,
+        trainer: Trainer,
+        pl_module: LightningModule,
+        callback_state: Dict[str, Any],
     ) -> None:
         self.task_to_id_dict = callback_state.get("task_to_id_dict", None)
         self.id_to_task_dict = callback_state.get("id_to_task_dict", None)
-        self.groundtruth_task_counter = callback_state.get("groundtruth_task_counter", None)
+        self.groundtruth_task_counter = callback_state.get(
+            "groundtruth_task_counter", None
+        )

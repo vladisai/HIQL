@@ -28,7 +28,15 @@ class Robot:
         max_velocity,
         use_ik_fast,
         euler_obs,
-        lower_joint_limits=(-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973),
+        lower_joint_limits=(
+            -2.8973,
+            -1.7628,
+            -2.8973,
+            -3.0718,
+            -2.8973,
+            -0.0175,
+            -2.8973,
+        ),
         upper_joint_limits=(2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973),
         max_rel_pos=0.02,
         max_rel_orn=0.05,
@@ -92,7 +100,9 @@ class Robot:
             childFramePosition=[0, 0, 0],
             physicsClientId=self.cid,
         )
-        p.changeConstraint(c, gearRatio=-1, erp=0.1, maxForce=50, physicsClientId=self.cid)
+        p.changeConstraint(
+            c, gearRatio=-1, erp=0.1, maxForce=50, physicsClientId=self.cid
+        )
         num_dof = p.computeDofCount(self.robot_uid)
         # lower limits for null space (todo: set them to proper range)
         self.ll = [-7] * num_dof
@@ -101,7 +111,9 @@ class Robot:
         # joint ranges for null space (todo: set them to proper range)
         self.jr = [7] * num_dof
         # restposes for null space
-        self.rp = list(self.initial_joint_positions) + [self.gripper_joint_limits[1]] * 2
+        self.rp = (
+            list(self.initial_joint_positions) + [self.gripper_joint_limits[1]] * 2
+        )
         self.reset()
         self.mixed_ik = MixedIK(
             self.robot_uid,
@@ -145,13 +157,24 @@ class Robot:
             gripper_state = self.gripper_joint_limits[1]
             joint_states = self.initial_joint_positions
         else:
-            joint_indices = [i for i, x in enumerate(self.get_observation_labels()) if x.startswith("robot_joint")]
+            joint_indices = [
+                i
+                for i, x in enumerate(self.get_observation_labels())
+                if x.startswith("robot_joint")
+            ]
             joint_states = robot_state[joint_indices]
-            gripper_state = robot_state[self.get_observation_labels().index("gripper_opening_width")] / 2
+            gripper_state = (
+                robot_state[
+                    self.get_observation_labels().index("gripper_opening_width")
+                ]
+                / 2
+            )
 
         assert len(joint_states) == len(self.arm_joint_ids)
         for i, _id in enumerate(self.arm_joint_ids):
-            p.resetJointState(self.robot_uid, _id, joint_states[i], physicsClientId=self.cid)
+            p.resetJointState(
+                self.robot_uid, _id, joint_states[i], physicsClientId=self.cid
+            )
             p.setJointMotorControl2(
                 bodyIndex=self.robot_uid,
                 jointIndex=_id,
@@ -162,7 +185,9 @@ class Robot:
                 physicsClientId=self.cid,
             )
         for i in self.gripper_joint_ids:
-            p.resetJointState(self.robot_uid, i, gripper_state, physicsClientId=self.cid)
+            p.resetJointState(
+                self.robot_uid, i, gripper_state, physicsClientId=self.cid
+            )
             p.setJointMotorControl2(
                 bodyIndex=self.robot_uid,
                 jointIndex=i,
@@ -172,7 +197,9 @@ class Robot:
                 maxVelocity=1,
                 physicsClientId=self.cid,
             )
-        tcp_pos, tcp_orn = p.getLinkState(self.robot_uid, self.tcp_link_id, physicsClientId=self.cid)[:2]
+        tcp_pos, tcp_orn = p.getLinkState(
+            self.robot_uid, self.tcp_link_id, physicsClientId=self.cid
+        )[:2]
         if self.euler_obs:
             tcp_orn = p.getEulerFromQuaternion(tcp_orn)
         self.target_pos = np.array(tcp_pos)
@@ -189,17 +216,33 @@ class Robot:
             - gripper_action: robot_state[15:] (quat) / [14:] (euler)
         - robot_info: Dict
         """
-        tcp_pos, tcp_orn = p.getLinkState(self.robot_uid, self.tcp_link_id, physicsClientId=self.cid)[:2]
+        tcp_pos, tcp_orn = p.getLinkState(
+            self.robot_uid, self.tcp_link_id, physicsClientId=self.cid
+        )[:2]
         if self.euler_obs:
             tcp_orn = p.getEulerFromQuaternion(tcp_orn)
         gripper_opening_width = (
-            p.getJointState(self.robot_uid, self.gripper_joint_ids[0], physicsClientId=self.cid)[0]
-            + p.getJointState(self.robot_uid, self.gripper_joint_ids[1], physicsClientId=self.cid)[0]
+            p.getJointState(
+                self.robot_uid, self.gripper_joint_ids[0], physicsClientId=self.cid
+            )[0]
+            + p.getJointState(
+                self.robot_uid, self.gripper_joint_ids[1], physicsClientId=self.cid
+            )[0]
         )
         arm_joint_states = []
         for i in self.arm_joint_ids:
-            arm_joint_states.append(p.getJointState(self.robot_uid, i, physicsClientId=self.cid)[0])
-        robot_state = np.array([*tcp_pos, *tcp_orn, gripper_opening_width, *arm_joint_states, self.gripper_action])
+            arm_joint_states.append(
+                p.getJointState(self.robot_uid, i, physicsClientId=self.cid)[0]
+            )
+        robot_state = np.array(
+            [
+                *tcp_pos,
+                *tcp_orn,
+                gripper_opening_width,
+                *arm_joint_states,
+                self.gripper_action,
+            ]
+        )
         robot_info = {
             "tcp_pos": tcp_pos,
             "tcp_orn": tcp_orn,
@@ -207,7 +250,9 @@ class Robot:
             "arm_joint_states": arm_joint_states,
             "gripper_action": self.gripper_action,
             "uid": self.robot_uid,
-            "contacts": p.getContactPoints(bodyA=self.robot_uid, physicsClientId=self.cid),
+            "contacts": p.getContactPoints(
+                bodyA=self.robot_uid, physicsClientId=self.cid
+            ),
         }
         return robot_state, robot_info
 
@@ -235,7 +280,9 @@ class Robot:
             self.target_orn += rel_orn
             return self.target_pos, self.target_orn, gripper
         else:
-            tcp_pos, tcp_orn = p.getLinkState(self.robot_uid, self.tcp_link_id, physicsClientId=self.cid)[:2]
+            tcp_pos, tcp_orn = p.getLinkState(
+                self.robot_uid, self.tcp_link_id, physicsClientId=self.cid
+            )[:2]
             tcp_orn = p.getEulerFromQuaternion(tcp_orn)
             abs_pos = np.array(tcp_pos) + rel_pos
             abs_orn = np.array(tcp_orn) + rel_orn
@@ -374,7 +421,9 @@ class Robot:
         return {
             "uid": self.robot_uid,
             "info": p.getBodyInfo(self.robot_uid, physicsClientId=self.cid),
-            "pose": p.getBasePositionAndOrientation(self.robot_uid, physicsClientId=self.cid),
+            "pose": p.getBasePositionAndOrientation(
+                self.robot_uid, physicsClientId=self.cid
+            ),
             "joints": p.getJointStates(
                 self.robot_uid,
                 list(range(p.getNumJoints(self.robot_uid, physicsClientId=self.cid))),
@@ -385,7 +434,10 @@ class Robot:
 
     def reset_from_storage(self, data):
         p.resetBasePositionAndOrientation(
-            bodyUniqueId=self.robot_uid, posObj=data["pose"][0], ornObj=data["pose"][1], physicsClientId=self.cid
+            bodyUniqueId=self.robot_uid,
+            posObj=data["pose"][0],
+            ornObj=data["pose"][1],
+            physicsClientId=self.cid,
         )
         num_joints = len(data["joints"])
         assert num_joints == p.getNumJoints(self.robot_uid, physicsClientId=self.cid)

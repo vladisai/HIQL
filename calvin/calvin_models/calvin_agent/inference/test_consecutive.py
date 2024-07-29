@@ -47,7 +47,9 @@ def test_model_seq_goals(
     s = env.reset()
     # init viewer utility
     FPS = 10
-    render_skip = max(1, round(1.0 / (FPS * env.sim.model.opt.timestep * env.frame_skip)))
+    render_skip = max(
+        1, round(1.0 / (FPS * env.sim.model.opt.timestep * env.frame_skip))
+    )
     viewer(env, mode="initialize")
 
     # take actions
@@ -56,13 +58,17 @@ def test_model_seq_goals(
         curr_img = cv2.resize(curr_img, (300, 300))
 
         current_and_goal = np.stack((curr_img, goal), axis=0)  # (2, 300, 300, 3)
-        current_and_goal = np.expand_dims(current_and_goal.transpose(0, 3, 1, 2), axis=0)  # (1, 2, 3, 300, 300)
+        current_and_goal = np.expand_dims(
+            current_and_goal.transpose(0, 3, 1, 2), axis=0
+        )  # (1, 2, 3, 300, 300)
         current_obs = np.expand_dims(s[:9], axis=0)  # (1,9)
 
         # prediction
         if i % new_plan_frec == 0:
             plan = model.get_pp_plan_vision(current_obs, current_and_goal)
-        action = model.predict_with_plan(current_obs, current_and_goal, plan).squeeze()  # (9)
+        action = model.predict_with_plan(
+            current_obs, current_and_goal, plan
+        ).squeeze()  # (9)
         s, r, _, _ = env.step(action.cpu().detach().numpy())
         if i % render_skip == 0:
             viewer(env, mode="render", render=show_video)
@@ -95,7 +101,15 @@ def test_model_seq_goals(
     env.close()
 
 
-def test_subsequent(model_name, n_mixtures, use_logistics, goal_list, video_name, sample_new_plan=1, n_runs=5):
+def test_subsequent(
+    model_name,
+    n_mixtures,
+    use_logistics,
+    goal_list,
+    video_name,
+    sample_new_plan=1,
+    n_runs=5,
+):
     # model init
     model_file_path = "./models/%s.pth" % model_name
     model = PlayLMP(num_mixtures=n_mixtures, use_logistics=use_logistics)
@@ -133,4 +147,12 @@ if __name__ == "__main__":
     n_runs = 5  # number of videos to run/save
 
     # test
-    test_subsequent(model_name, num_mixtures, use_logistics, goal_lst, video_name, sample_new_plan, n_runs)
+    test_subsequent(
+        model_name,
+        num_mixtures,
+        use_logistics,
+        goal_lst,
+        video_name,
+        sample_new_plan,
+        n_runs,
+    )

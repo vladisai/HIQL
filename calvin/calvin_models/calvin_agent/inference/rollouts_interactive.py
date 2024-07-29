@@ -57,7 +57,9 @@ def test_policy(input_cfg: DictConfig) -> None:
     data_module.setup()
     dataloader = data_module.val_dataloader()
     dataset = dataloader.dataset.datasets["vis"]
-    env = hydra.utils.instantiate(cfg.callbacks.rollout.env_cfg, dataset, torch.device("cuda:0"), show_gui=False)
+    env = hydra.utils.instantiate(
+        cfg.callbacks.rollout.env_cfg, dataset, torch.device("cuda:0"), show_gui=False
+    )
 
     tasks = hydra.utils.instantiate(cfg.callbacks.rollout.tasks)
     checkpoint = get_checkpoint(cfg)
@@ -68,7 +70,9 @@ def test_policy(input_cfg: DictConfig) -> None:
     model = model.cuda(0)
     logger.info("Successfully loaded model.")
 
-    ep_start_end_ids = np.sort(np.load(dataset.abs_datasets_dir / "ep_start_end_ids.npy"), axis=0)
+    ep_start_end_ids = np.sort(
+        np.load(dataset.abs_datasets_dir / "ep_start_end_ids.npy"), axis=0
+    )
 
     for s, e in ep_start_end_ids:
         i = start_i = s
@@ -111,7 +115,9 @@ def test_policy(input_cfg: DictConfig) -> None:
                 i = np.clip(i, s, e)
                 file = dataset.abs_datasets_dir / f"episode_{i:06d}.npz"
                 data = np.load(file)
-                obs = env.reset(scene_obs=data["scene_obs"], robot_obs=data["robot_obs"])
+                obs = env.reset(
+                    scene_obs=data["scene_obs"], robot_obs=data["robot_obs"]
+                )
                 current_img_obs = obs["rgb_obs"]
 
             elif k == ord("d"):
@@ -119,14 +125,18 @@ def test_policy(input_cfg: DictConfig) -> None:
                 i = np.clip(i, s, e)
                 file = dataset.abs_datasets_dir / f"episode_{i:06d}.npz"
                 data = np.load(file)
-                obs = env.reset(scene_obs=data["scene_obs"], robot_obs=data["robot_obs"])
+                obs = env.reset(
+                    scene_obs=data["scene_obs"], robot_obs=data["robot_obs"]
+                )
                 current_img_obs = obs["rgb_obs"]
             elif k == ord("q"):
                 i -= 100
                 i = np.clip(i, s, e)
                 file = dataset.abs_datasets_dir / f"episode_{i:06d}.npz"
                 data = np.load(file)
-                obs = env.reset(scene_obs=data["scene_obs"], robot_obs=data["robot_obs"])
+                obs = env.reset(
+                    scene_obs=data["scene_obs"], robot_obs=data["robot_obs"]
+                )
                 current_img_obs = obs["rgb_obs"]
 
             elif k == ord("e"):
@@ -134,12 +144,24 @@ def test_policy(input_cfg: DictConfig) -> None:
                 i = np.clip(i, s, e)
                 file = dataset.abs_datasets_dir / f"episode_{i:06d}.npz"
                 data = np.load(file)
-                obs = env.reset(scene_obs=data["scene_obs"], robot_obs=data["robot_obs"])
+                obs = env.reset(
+                    scene_obs=data["scene_obs"], robot_obs=data["robot_obs"]
+                )
                 current_img_obs = obs["rgb_obs"]
 
             elif k == ord("f"):
                 env.reset(scene_obs=scene_obs, robot_obs=robot_obs)
-                rollout(model, env, tasks, cfg, start_info, start_img_obs, start_state_obs, goal_imgs, goal_state)
+                rollout(
+                    model,
+                    env,
+                    tasks,
+                    cfg,
+                    start_info,
+                    start_img_obs,
+                    start_state_obs,
+                    goal_imgs,
+                    goal_state,
+                )
                 obs = env.reset(scene_obs=scene_obs, robot_obs=robot_obs)
                 current_img_obs = obs["rgb_obs"]
                 i = start_i
@@ -147,7 +169,17 @@ def test_policy(input_cfg: DictConfig) -> None:
                 break
 
 
-def rollout(model, env, tasks, cfg, start_info, current_img_obs, current_state_obs, goal_imgs, goal_state):
+def rollout(
+    model,
+    env,
+    tasks,
+    cfg,
+    start_info,
+    current_img_obs,
+    current_state_obs,
+    goal_imgs,
+    goal_state,
+):
     # goal image is last step of the episode
     # goal_imgs = [goal_img.unsqueeze(0).cuda() for goal_img in goal_imgs]
     goal_imgs = goal_imgs[0].contiguous()
@@ -160,7 +192,9 @@ def rollout(model, env, tasks, cfg, start_info, current_img_obs, current_state_o
         imshow_tensor("current_img", current_img_obs[0], wait=1)
 
         # use plan to predict actions with current observations
-        action = model.predict_with_plan(current_img_obs, current_state_obs, latent_goal, plan)
+        action = model.predict_with_plan(
+            current_img_obs, current_state_obs, latent_goal, plan
+        )
         obs, _, _, current_info = env.step(action)
         # check if current step solves a task
         current_task_info = tasks.get_task_info(start_info, current_info)

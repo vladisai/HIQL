@@ -28,7 +28,9 @@ def main(cfg):
 
     p.resetDebugVisualizerCamera(**cfg.pybullet_camera)
     p.configureDebugVisualizer(
-        p.COV_ENABLE_SHADOWS, 1, lightPosition=[50, 0, 80],
+        p.COV_ENABLE_SHADOWS,
+        1,
+        lightPosition=[50, 0, 80],
     )
 
     # Create and initialize OmniTact

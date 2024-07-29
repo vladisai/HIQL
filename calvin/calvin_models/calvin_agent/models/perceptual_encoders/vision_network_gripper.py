@@ -37,9 +37,13 @@ class VisionNetwork(nn.Module):
         self.conv_model = eval(conv_encoder)
         self.conv_model = self.conv_model(self.act_fn, num_c)
         self.fc1 = nn.Sequential(
-            nn.Linear(in_features=128, out_features=512), self.act_fn, nn.Dropout(dropout_vis_fc)
+            nn.Linear(in_features=128, out_features=512),
+            self.act_fn,
+            nn.Dropout(dropout_vis_fc),
         )  # shape: [N, 512]
-        self.fc2 = nn.Linear(in_features=512, out_features=visual_features)  # shape: [N, 64]
+        self.fc2 = nn.Linear(
+            in_features=512, out_features=visual_features
+        )  # shape: [N, 64]
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv_model(x)

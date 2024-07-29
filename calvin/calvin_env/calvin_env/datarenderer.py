@@ -12,7 +12,12 @@ import omegaconf
 import pybullet as p
 from scipy.spatial.transform.rotation import Rotation as R
 
-from calvin_env.utils.utils import count_frames, get_episode_lengths, set_egl_device, to_relative_action
+from calvin_env.utils.utils import (
+    count_frames,
+    get_episode_lengths,
+    set_egl_device,
+    to_relative_action,
+)
 
 # A logger for this file
 log = logging.getLogger(__name__)
@@ -40,27 +45,42 @@ def main(cfg):
         playback_cfg = set_static_cams_from_gui(playback_cfg, recording_dir, max_frames)
 
     if cfg.processes != 1 and playback_cfg.show_gui:
-        log.warning("Multiprocess rendering requires headless mode, setting cfg.show_gui = False")
+        log.warning(
+            "Multiprocess rendering requires headless mode, setting cfg.show_gui = False"
+        )
         playback_cfg.show_gui = False
     # in order to distribute the rendering to multiple processes, predetermine the lengths of the
     # (rendered) episodes and to which (recording) file ids the episode start and end correspond
     # a rendered episode does not contain the done frame, thus length(render_episode) = length(recording_episode) -1
-    episode_lengths, render_start_end_ids = get_episode_lengths(cfg.load_dir, max_frames)
+    episode_lengths, render_start_end_ids = get_episode_lengths(
+        cfg.load_dir, max_frames
+    )
     # episode_lengths = episode_lengths[:1]
     # render_start_end_ids = render_start_end_ids[:1]
 
     if cfg.processes > len(episode_lengths):
-        log.warning(f"Trying to use more processes ({cfg.processes}) than episodes ({len(episode_lengths)}).")
+        log.warning(
+            f"Trying to use more processes ({cfg.processes}) than episodes ({len(episode_lengths)})."
+        )
         log.warning(f"Reducing number of processes to {len(episode_lengths)}.")
         cfg.processes = len(episode_lengths)
     # distribute the episodes equally to processes
-    split_indices = np.array_split(np.array(render_start_end_ids), cfg.processes, axis=0)
+    split_indices = np.array_split(
+        np.array(render_start_end_ids), cfg.processes, axis=0
+    )
     # every process renders the interval [proc_start_ids, proc_end_ids)
-    proc_start_ids = [split_indices[proc_num][0][0] for proc_num in range(cfg.processes)]
+    proc_start_ids = [
+        split_indices[proc_num][0][0] for proc_num in range(cfg.processes)
+    ]
     proc_end_ids = [split_indices[proc_num][-1][1] for proc_num in range(cfg.processes)]
     # predetermine starting episode indices for multiple processes
     proc_ep_ids = np.cumsum(
-        [0] + list(map(np.sum, np.array_split(np.array(episode_lengths), cfg.processes, axis=0)))[:-1]
+        [0]
+        + list(
+            map(
+                np.sum, np.array_split(np.array(episode_lengths), cfg.processes, axis=0)
+            )
+        )[:-1]
     )
     proc_ep_ids += num_prev_rendered_episodes
     if cfg.processes > 1:
@@ -82,16 +102,22 @@ def main(cfg):
         deque(map(lambda proc: proc.start(), processes))
         deque(map(lambda proc: proc.join(), processes))
     else:
-        worker_run(recording_dir, playback_cfg, 0, 0, max_frames, num_prev_rendered_episodes)
+        worker_run(
+            recording_dir, playback_cfg, 0, 0, max_frames, num_prev_rendered_episodes
+        )
     save_ep_lens(episode_lengths, num_prev_rendered_episodes)
 
     log.info("All workers done")
 
 
 def build_rendering_config(recording_dir, rendering_config):
-    merged_conf = omegaconf.OmegaConf.load(Path(recording_dir) / ".hydra" / "config.yaml")
+    merged_conf = omegaconf.OmegaConf.load(
+        Path(recording_dir) / ".hydra" / "config.yaml"
+    )
     merged_conf = omegaconf.OmegaConf.merge(merged_conf, rendering_config)
-    hydra.core.utils._save_config(merged_conf, "merged_config.yaml", Path(os.getcwd(), ".hydra"))
+    hydra.core.utils._save_config(
+        merged_conf, "merged_config.yaml", Path(os.getcwd(), ".hydra")
+    )
     return merged_conf
 
 
@@ -118,9 +144,17 @@ def save_ep_lens(episode_lengths, num_prev_episodes):
     np.save("ep_start_end_ids.npy", ep_start_end_ids)
 
 
-def save_step(counter, rgbs, depths, actions, robot_obs, scene_obs, cam_names, **additional_infos):
-    rgb_entries = {f"rgb_{cam_name}": rgbs[f"rgb_{cam_name}"] for i, cam_name in enumerate(cam_names)}
-    depths_entries = {f"depth_{cam_name}": depths[f"depth_{cam_name}"] for i, cam_name in enumerate(cam_names)}
+def save_step(
+    counter, rgbs, depths, actions, robot_obs, scene_obs, cam_names, **additional_infos
+):
+    rgb_entries = {
+        f"rgb_{cam_name}": rgbs[f"rgb_{cam_name}"]
+        for i, cam_name in enumerate(cam_names)
+    }
+    depths_entries = {
+        f"depth_{cam_name}": depths[f"depth_{cam_name}"]
+        for i, cam_name in enumerate(cam_names)
+    }
     if actions[-1] == 0:
         actions[-1] = -1
     np.savez_compressed(
@@ -175,7 +209,9 @@ def set_static_cams_from_gui(cfg, load_dir, max_frames):
                 frame_rgbs, frame_depths = env.get_camera_obs()
                 rgb_static = frame_rgbs[cam_index]
 
-                cv2.imshow("Render_view_window", cv2.resize(rgb_static, (500, 500))[:, :, ::-1])
+                cv2.imshow(
+                    "Render_view_window", cv2.resize(rgb_static, (500, 500))[:, :, ::-1]
+                )
                 k = cv2.waitKey(10) % 256
                 if k == ord("a"):
                     frame -= 1
@@ -209,7 +245,9 @@ def set_static_cams_from_gui(cfg, load_dir, max_frames):
                     c = env.cameras[cam_index]
                     direction_vector = np.array(c.look_at) - np.array(c.look_from)
                     c.up_vector = (
-                        R.from_rotvec(0.1 * direction_vector / np.linalg.norm(direction_vector)).as_matrix()
+                        R.from_rotvec(
+                            0.1 * direction_vector / np.linalg.norm(direction_vector)
+                        ).as_matrix()
                         @ c.up_vector
                     )
                     up_vector = c.up_vector
@@ -217,7 +255,9 @@ def set_static_cams_from_gui(cfg, load_dir, max_frames):
                     c = env.cameras[cam_index]
                     direction_vector = np.array(c.look_at) - np.array(c.look_from)
                     c.up_vector = (
-                        R.from_rotvec(-0.1 * direction_vector / np.linalg.norm(direction_vector)).as_matrix()
+                        R.from_rotvec(
+                            -0.1 * direction_vector / np.linalg.norm(direction_vector)
+                        ).as_matrix()
                         @ c.up_vector
                     )
                     up_vector = c.up_vector
@@ -236,19 +276,29 @@ def set_static_cams_from_gui(cfg, load_dir, max_frames):
                     break
                 # if k == ord("s"):
                 look_from, look_at = env.cameras[cam_index].set_position_from_gui()
-    hydra.core.utils._save_config(cfg, "merged_config.yaml", Path(os.getcwd(), ".hydra"))
+    hydra.core.utils._save_config(
+        cfg, "merged_config.yaml", Path(os.getcwd(), ".hydra")
+    )
     env.close()
     return cfg
 
 
-def worker_run(load_dir, rendering_cfg, proc_num, start_frame, stop_frame, episode_index):
+def worker_run(
+    load_dir, rendering_cfg, proc_num, start_frame, stop_frame, episode_index
+):
     log.info(f"[{proc_num}] Starting worker {proc_num}")
     set_egl_device(0)
     env = hydra.utils.instantiate(rendering_cfg.env)
 
     log.info(f"[{proc_num}] Entering Loop")
     frame_counter = 0
-    rgbs, depths, actions, robot_obs, scene_obs, = (
+    (
+        rgbs,
+        depths,
+        actions,
+        robot_obs,
+        scene_obs,
+    ) = (
         [],
         [],
         [],
@@ -270,7 +320,9 @@ def worker_run(load_dir, rendering_cfg, proc_num, start_frame, stop_frame, episo
         depths.append(frame_depths)
         # for terminal states save current robot state as action
         frame_counter += 1
-        log.debug(f"episode counter {episode_index} frame counter {frame_counter} done {done}")
+        log.debug(
+            f"episode counter {episode_index} frame counter {frame_counter} done {done}"
+        )
 
         if frame_counter > 1:
             save_step(

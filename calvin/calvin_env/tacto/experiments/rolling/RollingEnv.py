@@ -156,7 +156,9 @@ class RollingEnv:
         digitPos2 = [0, 0, 0.07]
         digitOrn2 = pb.getQuaternionFromEuler([0, np.pi / 2, np.pi])
         digitID2 = pb.loadURDF(
-            digitURDF, basePosition=digitPos2, baseOrientation=digitOrn2,
+            digitURDF,
+            basePosition=digitPos2,
+            baseOrientation=digitOrn2,
         )
         digits.add_camera(digitID2, [-1])
 

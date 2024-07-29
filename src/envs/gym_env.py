@@ -2,6 +2,7 @@ import os
 from collections import deque, OrderedDict
 
 import gym
+
 # import dmc2gym
 import numpy as np
 

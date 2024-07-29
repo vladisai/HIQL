@@ -10,7 +10,8 @@ class Door:
         joint_index = next(
             i
             for i in range(self.p.getNumJoints(uid, physicsClientId=self.cid))
-            if self.p.getJointInfo(uid, i, physicsClientId=self.cid)[1].decode("utf-8") == name
+            if self.p.getJointInfo(uid, i, physicsClientId=self.cid)[1].decode("utf-8")
+            == name
         )
         self.joint_index = joint_index
         self.uid = uid
@@ -33,7 +34,9 @@ class Door:
         )
 
     def get_state(self):
-        joint_state = self.p.getJointState(self.uid, self.joint_index, physicsClientId=self.cid)
+        joint_state = self.p.getJointState(
+            self.uid, self.joint_index, physicsClientId=self.cid
+        )
         return float(joint_state[0])
 
     def get_info(self):

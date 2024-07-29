@@ -21,7 +21,9 @@ class DataRecorder:
         """
         self.env = env
         self.queue = mp.Queue()
-        self.process = mp.Process(target=self.process_queue, name="MultiprocessingStorageWorker")
+        self.process = mp.Process(
+            target=self.process_queue, name="MultiprocessingStorageWorker"
+        )
         self.process.start()
         self.running = True
         self.save_frame_cnt = 0

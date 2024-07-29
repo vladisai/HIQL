@@ -72,12 +72,12 @@ def interp2d(
 def prepare_video(v, n_cols=None):
     orig_ndim = v.ndim
     if orig_ndim == 4:
-        v = v[None, ]
+        v = v[None,]
 
     _, t, c, h, w = v.shape
 
     if v.dtype == np.uint8:
-        v = np.float32(v) / 255.
+        v = np.float32(v) / 255.0
 
     if n_cols is None:
         if v.shape[0] <= 4:
@@ -88,8 +88,7 @@ def prepare_video(v, n_cols=None):
             n_cols = 6
     if v.shape[0] % n_cols != 0:
         len_addition = n_cols - v.shape[0] % n_cols
-        v = np.concatenate(
-            (v, np.zeros(shape=(len_addition, t, c, h, w))), axis=0)
+        v = np.concatenate((v, np.zeros(shape=(len_addition, t, c, h, w))), axis=0)
     n_rows = v.shape[0] // n_cols
 
     v = np.reshape(v, newshape=(n_rows, n_cols, t, c, h, w))
@@ -105,6 +104,7 @@ def save_video(label, step, tensor, fps=15, n_cols=None):
         if t.dtype != np.uint8:
             t = (t * 255.0).astype(np.uint8)
         return t
+
     if tensor.dtype in [object]:
         tensor = [_to_uint8(prepare_video(t, n_cols)) for t in tensor]
     else:
@@ -121,17 +121,25 @@ def save_video(label, step, tensor, fps=15, n_cols=None):
     #
     # clip.write_videofile(str(plot_path), audio=False, verbose=False, logger=None)
 
-
     # tensor: (t, h, w, c)
     tensor = tensor.transpose(0, 3, 1, 2)
-    return wandb.Video(tensor, fps=15, format='mp4')
+    return wandb.Video(tensor, fps=15, format="mp4")
     # logger.record_video(label, str(plot_path))
 
 
 def record_video(label, step, renders=None, n_cols=None, skip_frames=1):
     max_length = max([len(render) for render in renders])
     for i, render in enumerate(renders):
-        renders[i] = np.concatenate([render, np.zeros((max_length - render.shape[0], *render.shape[1:]), dtype=render.dtype)], axis=0)
+        renders[i] = np.concatenate(
+            [
+                render,
+                np.zeros(
+                    (max_length - render.shape[0], *render.shape[1:]),
+                    dtype=render.dtype,
+                ),
+            ],
+            axis=0,
+        )
         renders[i] = renders[i][::skip_frames]
     renders = np.array(renders)
     return save_video(label, step, renders, n_cols=n_cols)
@@ -145,17 +153,29 @@ class CsvLogger:
         self.disallowed_types = (wandb.Image, wandb.Video, wandb.Histogram)
 
     def log(self, row, step):
-        row['step'] = step
+        row["step"] = step
         if self.file is None:
-            self.file = open(self.path, 'w')
+            self.file = open(self.path, "w")
             if self.header is None:
-                self.header = [k for k, v in row.items() if not isinstance(v, self.disallowed_types)]
-                self.file.write(','.join(self.header) + '\n')
-            filtered_row = {k: v for k, v in row.items() if not isinstance(v, self.disallowed_types)}
-            self.file.write(','.join([str(filtered_row.get(k, '')) for k in self.header]) + '\n')
+                self.header = [
+                    k
+                    for k, v in row.items()
+                    if not isinstance(v, self.disallowed_types)
+                ]
+                self.file.write(",".join(self.header) + "\n")
+            filtered_row = {
+                k: v for k, v in row.items() if not isinstance(v, self.disallowed_types)
+            }
+            self.file.write(
+                ",".join([str(filtered_row.get(k, "")) for k in self.header]) + "\n"
+            )
         else:
-            filtered_row = {k: v for k, v in row.items() if not isinstance(v, self.disallowed_types)}
-            self.file.write(','.join([str(filtered_row.get(k, '')) for k in self.header]) + '\n')
+            filtered_row = {
+                k: v for k, v in row.items() if not isinstance(v, self.disallowed_types)
+            }
+            self.file.write(
+                ",".join([str(filtered_row.get(k, "")) for k in self.header]) + "\n"
+            )
         self.file.flush()
 
     def close(self):

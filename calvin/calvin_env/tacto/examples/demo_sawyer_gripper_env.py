@@ -50,7 +50,7 @@ class GraspingPolicy(torch.nn.Module):
 
 def main():
     env = gym.make("sawyer-gripper-v0")
-    print (f"Env observation space: {env.observation_space}")
+    print(f"Env observation space: {env.observation_space}")
     env.reset()
 
     # Create a hard-coded grasping policy

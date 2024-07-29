@@ -6,10 +6,13 @@ from omegaconf import OmegaConf
 import multiprocessing
 from multiprocessing import Process, Queue
 from .renderer import Renderer as _Renderer
+
 logger = logging.getLogger(__name__)
 
 
-def worker(parent_to_child_q, child_to_parent_q, width, height, background, config_path):
+def worker(
+    parent_to_child_q, child_to_parent_q, width, height, background, config_path
+):
     renderer = _Renderer(width, height, background, config_path)
     while True:
         try:
@@ -37,7 +40,18 @@ class Renderer:
         self.parent_to_child_q = Queue()
         self.child_to_parent_q = Queue()
         # It is not clear to me why this works with a thread, but not with a process
-        self._renderer = Thread(target=worker, args=(self.parent_to_child_q, self.child_to_parent_q, width, height, background, config_path), daemon=True)
+        self._renderer = Thread(
+            target=worker,
+            args=(
+                self.parent_to_child_q,
+                self.child_to_parent_q,
+                width,
+                height,
+                background,
+                config_path,
+            ),
+            daemon=True,
+        )
         self._renderer.start()
         self.parent_to_child_q.put(("depth0", None))
         self.depth0 = self.child_to_parent_q.get()
@@ -46,11 +60,19 @@ class Renderer:
     def __del__(self):
         self.close()
 
-    def add_object(self, objTrimesh, obj_name, position=[0, 0, 0], orientation=[0, 0, 0]):
-        self.parent_to_child_q.put(("add_object", (objTrimesh, obj_name, position, orientation)))
+    def add_object(
+        self, objTrimesh, obj_name, position=[0, 0, 0], orientation=[0, 0, 0]
+    ):
+        self.parent_to_child_q.put(
+            ("add_object", (objTrimesh, obj_name, position, orientation))
+        )
 
-    def render(self, object_poses=None, normal_forces=None, noise=True, calibration=True):
-        self.parent_to_child_q.put(("render", (object_poses, normal_forces, noise, calibration)))
+    def render(
+        self, object_poses=None, normal_forces=None, noise=True, calibration=True
+    ):
+        self.parent_to_child_q.put(
+            ("render", (object_poses, normal_forces, noise, calibration))
+        )
         return self.child_to_parent_q.get()
 
     def update_camera_pose(self, position, orientation):
@@ -85,6 +107,6 @@ class Renderer:
     def close(self):
         if self.closed:
             return
-        self.parent_to_child_q.put(('close', None))
+        self.parent_to_child_q.put(("close", None))
         self._renderer.join()
         self.closed = True

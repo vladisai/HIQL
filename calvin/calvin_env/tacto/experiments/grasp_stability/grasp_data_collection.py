@@ -204,7 +204,7 @@ def get_object_pose():
     world_positions = res[0]
     world_orientations = res[1]
 
-    if (world_positions[0] ** 2 + world_positions[1] ** 2) > 0.8 ** 2:
+    if (world_positions[0] ** 2 + world_positions[1] ** 2) > 0.8**2:
         pb.resetBasePositionAndOrientation(objID, objStartPos, objStartOrientation)
         return objStartPos, objStartOrientation
 

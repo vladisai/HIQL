@@ -51,7 +51,9 @@ def rollout(
     for mod in modalities:
         groundtruth_task = id_to_task_dict[int(idx)]
         # reset env to state of first step in the episode
-        obs = env.reset(robot_obs=reset_info["robot_obs"][0], scene_obs=reset_info["scene_obs"][0])
+        obs = env.reset(
+            robot_obs=reset_info["robot_obs"][0], scene_obs=reset_info["scene_obs"][0]
+        )
         start_info = env.get_info()
         demo_task_counter += Counter(groundtruth_task)
         current_img_obs = obs["rgb_obs"]
@@ -61,7 +63,9 @@ def rollout(
         if mod == "lang":
             _task = np.random.choice(list(groundtruth_task))
             task_embeddings = embeddings[_task]
-            goal_lang = torch.tensor(task_embeddings[np.random.randint(task_embeddings.shape[0])]).unsqueeze(0)
+            goal_lang = torch.tensor(
+                task_embeddings[np.random.randint(task_embeddings.shape[0])]
+            ).unsqueeze(0)
         else:
             # goal image is last step of the episode
             goal_img = [rgb_ob[-1].unsqueeze(0).cuda() for rgb_ob in rgb_obs]
@@ -83,13 +87,19 @@ def rollout(
             if cfg.visualize:
                 imshow_tensor("goal_img", goal_img[0], wait=1)
                 imshow_tensor("current_img", current_img_obs[0], wait=1, keypoints=kps)
-                imshow_tensor("dataset_img", rgb_obs[0][np.clip(step, 0, seq_len_max)], wait=1)
+                imshow_tensor(
+                    "dataset_img", rgb_obs[0][np.clip(step, 0, seq_len_max)], wait=1
+                )
 
             # use plan to predict actions with current observations
-            action = model.predict_with_plan(current_img_obs, current_state_obs, latent_goal, plan)
+            action = model.predict_with_plan(
+                current_img_obs, current_state_obs, latent_goal, plan
+            )
             obs, _, _, current_info = env.step(action)
             # check if current step solves a task
-            current_task_info = tasks.get_task_info_for_set(start_info, current_info, groundtruth_task)
+            current_task_info = tasks.get_task_info_for_set(
+                start_info, current_info, groundtruth_task
+            )
             # check if a task was achieved and if that task is a subset of the original tasks
             # we do not just want to solve any task, we want to solve the task that was proposed
             if len(current_task_info) > 0:
@@ -166,12 +176,15 @@ def test_policy(input_cfg: DictConfig) -> None:
     dataset = dataloader.dataset.datasets["vis"]
     # dataset = val_dataloaders[0].dataset.datasets["vis"]  # type: ignore
     # dataloader = data_module.train_dataloader()
-    env = hydra.utils.instantiate(cfg.callbacks.rollout.env_cfg, dataset, torch.device("cuda:0"), show_gui=False)
+    env = hydra.utils.instantiate(
+        cfg.callbacks.rollout.env_cfg, dataset, torch.device("cuda:0"), show_gui=False
+    )
 
     try:
-        embeddings = np.load(dataset.abs_datasets_dir / "embeddings.npy", allow_pickle=True,).reshape(
-            -1
-        )[0]
+        embeddings = np.load(
+            dataset.abs_datasets_dir / "embeddings.npy",
+            allow_pickle=True,
+        ).reshape(-1)[0]
     except FileNotFoundError:
         embeddings = None
 
@@ -181,7 +194,9 @@ def test_policy(input_cfg: DictConfig) -> None:
     model = PlayLMP.load_from_checkpoint(checkpoint)
     model.freeze()
     if train_cfg.model.action_decoder.get("load_action_bounds", False):
-        model.action_decoder._setup_action_bounds(cfg.datamodule.root_data_dir, None, None)
+        model.action_decoder._setup_action_bounds(
+            cfg.datamodule.root_data_dir, None, None
+        )
     model = model.cuda(0)
 
     logger.info("Successfully loaded model.")

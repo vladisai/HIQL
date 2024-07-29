@@ -55,12 +55,16 @@ class PlayTableSimEnv(gym.Env):
         self.control_freq = control_freq
         self.action_repeat = int(bullet_time_step // control_freq)
         render_width = max([cameras[cam].width for cam in cameras]) if cameras else None
-        render_height = max([cameras[cam].height for cam in cameras]) if cameras else None
+        render_height = (
+            max([cameras[cam].height for cam in cameras]) if cameras else None
+        )
         self.initialize_bullet(bullet_time_step, render_width, render_height)
         self.np_random = None
         self.seed(seed)
         self.robot = hydra.utils.instantiate(robot_cfg, cid=self.cid)
-        self.scene = hydra.utils.instantiate(scene_cfg, p=self.p, cid=self.cid, np_random=self.np_random)
+        self.scene = hydra.utils.instantiate(
+            scene_cfg, p=self.p, cid=self.cid, np_random=self.np_random
+        )
 
         # Load Env
         self.load()
@@ -68,7 +72,10 @@ class PlayTableSimEnv(gym.Env):
         # init cameras after scene is loaded to have robot id available
         self.cameras = [
             hydra.utils.instantiate(
-                cameras[name], cid=self.cid, robot_id=self.robot.robot_uid, objects=self.scene.get_objects()
+                cameras[name],
+                cid=self.cid,
+                robot_id=self.robot.robot_uid,
+                objects=self.scene.get_objects(),
             )
             for name in cameras
         ]
@@ -86,9 +93,14 @@ class PlayTableSimEnv(gym.Env):
                 self.p = bc.BulletClient(connection_mode=p.SHARED_MEMORY)
                 cid = self.p._client
                 if cid < 0:
-                    log.error("Failed to connect to SHARED_MEMORY bullet server.\n" " Is it running?")
+                    log.error(
+                        "Failed to connect to SHARED_MEMORY bullet server.\n"
+                        " Is it running?"
+                    )
                     sys.exit(1)
-                self.p.setRealTimeSimulation(enableRealTimeSimulation=1, physicsClientId=cid)
+                self.p.setRealTimeSimulation(
+                    enableRealTimeSimulation=1, physicsClientId=cid
+                )
             elif self.show_gui:
                 self.p = bc.BulletClient(connection_mode=p.GUI)
                 cid = self.p._client
@@ -99,11 +111,19 @@ class PlayTableSimEnv(gym.Env):
                 self.p = p
                 cid = self.p.connect(p.DIRECT, options=options)
                 p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0, physicsClientId=cid)
-                p.configureDebugVisualizer(p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, 0, physicsClientId=cid)
-                p.configureDebugVisualizer(p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, 0, physicsClientId=cid)
-                p.configureDebugVisualizer(p.COV_ENABLE_RGB_BUFFER_PREVIEW, 0, physicsClientId=cid)
+                p.configureDebugVisualizer(
+                    p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, 0, physicsClientId=cid
+                )
+                p.configureDebugVisualizer(
+                    p.COV_ENABLE_DEPTH_BUFFER_PREVIEW, 0, physicsClientId=cid
+                )
+                p.configureDebugVisualizer(
+                    p.COV_ENABLE_RGB_BUFFER_PREVIEW, 0, physicsClientId=cid
+                )
                 egl = pkgutil.get_loader("eglRenderer")
-                log.info("Loading EGL plugin (may segfault on misconfigured systems)...")
+                log.info(
+                    "Loading EGL plugin (may segfault on misconfigured systems)..."
+                )
                 if egl:
                     plugin = p.loadPlugin(egl.get_filename(), "_eglRendererPlugin")
                 else:
@@ -123,7 +143,9 @@ class PlayTableSimEnv(gym.Env):
 
             self.cid = cid
             self.p.resetSimulation(physicsClientId=self.cid)
-            self.p.setPhysicsEngineParameter(deterministicOverlappingPairs=1, physicsClientId=self.cid)
+            self.p.setPhysicsEngineParameter(
+                deterministicOverlappingPairs=1, physicsClientId=self.cid
+            )
             self.p.configureDebugVisualizer(self.p.COV_ENABLE_GUI, 0)
             log.info(f"Connected to server with id: {self.cid}")
             self.p.setTimeStep(1.0 / bullet_time_step, physicsClientId=self.cid)
@@ -263,7 +285,11 @@ class PlayTableSimEnv(gym.Env):
         return data["state_obs"], data["done"], data["info"]
 
     def serialize(self):
-        data = {"time": time.time_ns() / (10**9), "robot": self.robot.serialize(), "scene": self.scene.serialize()}
+        data = {
+            "time": time.time_ns() / (10**9),
+            "robot": self.robot.serialize(),
+            "scene": self.scene.serialize(),
+        }
         return data
 
 
@@ -276,22 +302,31 @@ def get_env(dataset_path, obs_space=None, show_gui=True, **kwargs):
 
     if obs_space is not None:
         exclude_keys = set(render_conf.cameras.keys()) - {
-            re.split("_", key)[1] for key in obs_space["rgb_obs"] + obs_space["depth_obs"]
+            re.split("_", key)[1]
+            for key in obs_space["rgb_obs"] + obs_space["depth_obs"]
         }
         for k in exclude_keys:
             del render_conf.cameras[k]
     if "scene" in kwargs:
-        scene_cfg = OmegaConf.load(Path(calvin_env.__file__).parents[1] / "conf/scene" / f"{kwargs['scene']}.yaml")
+        scene_cfg = OmegaConf.load(
+            Path(calvin_env.__file__).parents[1]
+            / "conf/scene"
+            / f"{kwargs['scene']}.yaml"
+        )
         OmegaConf.merge(render_conf, scene_cfg)
     if not hydra.core.global_hydra.GlobalHydra.instance().is_initialized():
         hydra.initialize(".")
-    env = hydra.utils.instantiate(render_conf.env, show_gui=show_gui, use_vr=False, use_scene_info=True)
+    env = hydra.utils.instantiate(
+        render_conf.env, show_gui=show_gui, use_vr=False, use_scene_info=True
+    )
     return env
 
 
 @hydra.main(config_path="../../conf", config_name="config_data_collection")
 def run_env(cfg):
-    env = hydra.utils.instantiate(cfg.env, show_gui=True, use_vr=False, use_scene_info=True)
+    env = hydra.utils.instantiate(
+        cfg.env, show_gui=True, use_vr=False, use_scene_info=True
+    )
 
     env.reset()
     while True:

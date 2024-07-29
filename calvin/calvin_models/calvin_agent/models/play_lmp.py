@@ -38,7 +38,9 @@ class PlayLMP(pl.LightningModule):
         self.plan_proposal = hydra.utils.instantiate(plan_proposal)
         self.plan_recognition = hydra.utils.instantiate(plan_recognition)
         self.visual_goal = hydra.utils.instantiate(visual_goal)
-        self.language_goal = hydra.utils.instantiate(language_goal) if language_goal else None
+        self.language_goal = (
+            hydra.utils.instantiate(language_goal) if language_goal else None
+        )
         self.action_decoder: ActionDecoder = hydra.utils.instantiate(action_decoder)
         self.kl_beta = kl_beta
         self.modality_scope = "vis"
@@ -70,29 +72,45 @@ class PlayLMP(pl.LightningModule):
         decoder.perceptual_features = perceptual_encoder.latent_size
 
     def configure_optimizers(self):
-        optimizer = hydra.utils.instantiate(self.optimizer_config, params=self.parameters())
+        optimizer = hydra.utils.instantiate(
+            self.optimizer_config, params=self.parameters()
+        )
         return optimizer
 
     def lmp_train(
-        self, perceptual_emb: torch.Tensor, latent_goal: torch.Tensor, train_acts: torch.Tensor
+        self,
+        perceptual_emb: torch.Tensor,
+        latent_goal: torch.Tensor,
+        train_acts: torch.Tensor,
     ) -> Tuple[
-        torch.Tensor, torch.Tensor, torch.Tensor, torch.distributions.Distribution, torch.distributions.Distribution
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.distributions.Distribution,
+        torch.distributions.Distribution,
     ]:
         # ------------Plan Proposal------------ #
-        pp_dist = self.plan_proposal(perceptual_emb[:, 0], latent_goal)  # (batch, 256) each
+        pp_dist = self.plan_proposal(
+            perceptual_emb[:, 0], latent_goal
+        )  # (batch, 256) each
 
         # ------------Plan Recognition------------ #
         pr_dist = self.plan_recognition(perceptual_emb)  # (batch, 256) each
 
         sampled_plan = pr_dist.rsample()  # sample from recognition net
-        action_loss = self.action_decoder.loss(sampled_plan, perceptual_emb, latent_goal, train_acts)
+        action_loss = self.action_decoder.loss(
+            sampled_plan, perceptual_emb, latent_goal, train_acts
+        )
         kl_loss = self.compute_kl_loss(pr_dist, pp_dist)
         total_loss = action_loss + kl_loss
 
         return kl_loss, action_loss, total_loss, pp_dist, pr_dist
 
     def lmp_val(
-        self, perceptual_emb: torch.Tensor, latent_goal: torch.Tensor, actions: torch.Tensor
+        self,
+        perceptual_emb: torch.Tensor,
+        latent_goal: torch.Tensor,
+        actions: torch.Tensor,
     ) -> Tuple[
         torch.Tensor,
         torch.Tensor,
@@ -105,7 +123,9 @@ class PlayLMP(pl.LightningModule):
         torch.Tensor,
     ]:
         # ------------Plan Proposal------------ #
-        pp_dist = self.plan_proposal(perceptual_emb[:, 0], latent_goal)  # (batch, 256) each
+        pp_dist = self.plan_proposal(
+            perceptual_emb[:, 0], latent_goal
+        )  # (batch, 256) each
 
         # ------------ Policy network ------------ #
         sampled_plan_pp = pp_dist.sample()  # sample from proposal net
@@ -188,7 +208,9 @@ class PlayLMP(pl.LightningModule):
 
         for self.modality_scope, dataset_batch in batch.items():
             perceptual_emb = self.perceptual_encoder(
-                dataset_batch["rgb_obs"], dataset_batch["depth_obs"], dataset_batch["robot_obs"]
+                dataset_batch["rgb_obs"],
+                dataset_batch["depth_obs"],
+                dataset_batch["robot_obs"],
             )
             latent_goal = (
                 self.visual_goal(perceptual_emb[:, -1])
@@ -201,10 +223,27 @@ class PlayLMP(pl.LightningModule):
             kl_loss += kl
             action_loss += act_loss
             total_loss += mod_loss
-            self.log(f"train/kl_loss_scaled_{self.modality_scope}", kl, on_step=False, on_epoch=True)
-            self.log(f"train/action_loss_{self.modality_scope}", act_loss, on_step=False, on_epoch=True)
-            self.log(f"train/total_loss_{self.modality_scope}", mod_loss, on_step=False, on_epoch=True)
-        total_loss = total_loss / len(batch)  # divide accumulated gradients by number of datasets
+            self.log(
+                f"train/kl_loss_scaled_{self.modality_scope}",
+                kl,
+                on_step=False,
+                on_epoch=True,
+            )
+            self.log(
+                f"train/action_loss_{self.modality_scope}",
+                act_loss,
+                on_step=False,
+                on_epoch=True,
+            )
+            self.log(
+                f"train/total_loss_{self.modality_scope}",
+                mod_loss,
+                on_step=False,
+                on_epoch=True,
+            )
+        total_loss = total_loss / len(
+            batch
+        )  # divide accumulated gradients by number of datasets
         kl_loss = kl_loss / len(batch)
         action_loss = action_loss / len(batch)
         self.log("train/kl_loss", kl_loss, on_step=False, on_epoch=True)
@@ -213,7 +252,9 @@ class PlayLMP(pl.LightningModule):
         return total_loss
 
     def compute_kl_loss(
-        self, pr_dist: torch.distributions.Distribution, pp_dist: torch.distributions.Distribution
+        self,
+        pr_dist: torch.distributions.Distribution,
+        pp_dist: torch.distributions.Distribution,
     ) -> torch.Tensor:
         kl_loss = D.kl_divergence(pr_dist, pp_dist).mean()
         kl_loss_scaled = kl_loss * self.kl_beta
@@ -250,7 +291,9 @@ class PlayLMP(pl.LightningModule):
         output = {}
         for self.modality_scope, dataset_batch in batch.items():
             perceptual_emb = self.perceptual_encoder(
-                dataset_batch["rgb_obs"], dataset_batch["depth_obs"], dataset_batch["robot_obs"]
+                dataset_batch["rgb_obs"],
+                dataset_batch["depth_obs"],
+                dataset_batch["robot_obs"],
             )
             latent_goal = (
                 self.visual_goal(perceptual_emb[:, -1])
@@ -294,9 +337,15 @@ class PlayLMP(pl.LightningModule):
         val_grip_sr_pr = torch.tensor(0.0).to(self.device)
         val_grip_sr_pp = torch.tensor(0.0).to(self.device)
         for mod in self.trainer.datamodule.modalities:
-            act_loss_pp = torch.stack([x[f"val_action_loss_pp_{mod}"] for x in validation_step_outputs]).mean()
-            act_loss_pr = torch.stack([x[f"val_action_loss_pr_{mod}"] for x in validation_step_outputs]).mean()
-            kl_loss = torch.stack([x[f"kl_loss_{mod}"] for x in validation_step_outputs]).mean()
+            act_loss_pp = torch.stack(
+                [x[f"val_action_loss_pp_{mod}"] for x in validation_step_outputs]
+            ).mean()
+            act_loss_pr = torch.stack(
+                [x[f"val_action_loss_pr_{mod}"] for x in validation_step_outputs]
+            ).mean()
+            kl_loss = torch.stack(
+                [x[f"kl_loss_{mod}"] for x in validation_step_outputs]
+            ).mean()
             mae_pp = torch.cat([x[f"mae_pp_{mod}"] for x in validation_step_outputs])
             mae_pr = torch.cat([x[f"mae_pr_{mod}"] for x in validation_step_outputs])
             pr_mae_mean = mae_pr.mean()
@@ -305,8 +354,12 @@ class PlayLMP(pl.LightningModule):
             pos_mae_pr = mae_pr[..., :3].mean()
             orn_mae_pp = mae_pp[..., 3:6].mean()
             orn_mae_pr = mae_pr[..., 3:6].mean()
-            grip_sr_pp = torch.stack([x[f"gripper_sr_pp{mod}"] for x in validation_step_outputs]).mean()
-            grip_sr_pr = torch.stack([x[f"gripper_sr_pr{mod}"] for x in validation_step_outputs]).mean()
+            grip_sr_pp = torch.stack(
+                [x[f"gripper_sr_pp{mod}"] for x in validation_step_outputs]
+            ).mean()
+            grip_sr_pr = torch.stack(
+                [x[f"gripper_sr_pr{mod}"] for x in validation_step_outputs]
+            ).mean()
             val_total_mae_pr += pr_mae_mean
             val_total_mae_pp += pp_mae_mean
             val_pos_mae_pp += pos_mae_pp
@@ -331,24 +384,60 @@ class PlayLMP(pl.LightningModule):
             self.log(f"val_grip/{mod}_grip_sr_pp", grip_sr_pp, sync_dist=True)
             self.log(f"val_kl/{mod}_kl_loss", kl_loss, sync_dist=True)
         self.log(
-            "val_act/action_loss_pp", val_total_act_loss_pp / len(self.trainer.datamodule.modalities), sync_dist=True
+            "val_act/action_loss_pp",
+            val_total_act_loss_pp / len(self.trainer.datamodule.modalities),
+            sync_dist=True,
         )
         self.log(
-            "val_act/action_loss_pr", val_total_act_loss_pr / len(self.trainer.datamodule.modalities), sync_dist=True
-        )
-        self.log("val_kl/kl_loss", val_kl_loss / len(self.trainer.datamodule.modalities), sync_dist=True)
-        self.log(
-            "val_total_mae/total_mae_pr", val_total_mae_pr / len(self.trainer.datamodule.modalities), sync_dist=True
+            "val_act/action_loss_pr",
+            val_total_act_loss_pr / len(self.trainer.datamodule.modalities),
+            sync_dist=True,
         )
         self.log(
-            "val_total_mae/total_mae_pp", val_total_mae_pp / len(self.trainer.datamodule.modalities), sync_dist=True
+            "val_kl/kl_loss",
+            val_kl_loss / len(self.trainer.datamodule.modalities),
+            sync_dist=True,
         )
-        self.log("val_pos_mae/pos_mae_pr", val_pos_mae_pr / len(self.trainer.datamodule.modalities), sync_dist=True)
-        self.log("val_pos_mae/pos_mae_pp", val_pos_mae_pp / len(self.trainer.datamodule.modalities), sync_dist=True)
-        self.log("val_orn_mae/orn_mae_pr", val_orn_mae_pr / len(self.trainer.datamodule.modalities), sync_dist=True)
-        self.log("val_orn_mae/orn_mae_pp", val_orn_mae_pp / len(self.trainer.datamodule.modalities), sync_dist=True)
-        self.log("val_grip/grip_sr_pr", val_grip_sr_pr / len(self.trainer.datamodule.modalities), sync_dist=True)
-        self.log("val_grip/grip_sr_pp", val_grip_sr_pp / len(self.trainer.datamodule.modalities), sync_dist=True)
+        self.log(
+            "val_total_mae/total_mae_pr",
+            val_total_mae_pr / len(self.trainer.datamodule.modalities),
+            sync_dist=True,
+        )
+        self.log(
+            "val_total_mae/total_mae_pp",
+            val_total_mae_pp / len(self.trainer.datamodule.modalities),
+            sync_dist=True,
+        )
+        self.log(
+            "val_pos_mae/pos_mae_pr",
+            val_pos_mae_pr / len(self.trainer.datamodule.modalities),
+            sync_dist=True,
+        )
+        self.log(
+            "val_pos_mae/pos_mae_pp",
+            val_pos_mae_pp / len(self.trainer.datamodule.modalities),
+            sync_dist=True,
+        )
+        self.log(
+            "val_orn_mae/orn_mae_pr",
+            val_orn_mae_pr / len(self.trainer.datamodule.modalities),
+            sync_dist=True,
+        )
+        self.log(
+            "val_orn_mae/orn_mae_pp",
+            val_orn_mae_pp / len(self.trainer.datamodule.modalities),
+            sync_dist=True,
+        )
+        self.log(
+            "val_grip/grip_sr_pr",
+            val_grip_sr_pr / len(self.trainer.datamodule.modalities),
+            sync_dist=True,
+        )
+        self.log(
+            "val_grip/grip_sr_pp",
+            val_grip_sr_pp / len(self.trainer.datamodule.modalities),
+            sync_dist=True,
+        )
 
     def reset(self):
         self.plan = None
@@ -374,7 +463,9 @@ class PlayLMP(pl.LightningModule):
         sampled_plan: torch.Tensor,
     ) -> torch.Tensor:
         with torch.no_grad():
-            perceptual_emb = self.perceptual_encoder(obs["rgb_obs"], obs["depth_obs"], obs["robot_obs"])
+            perceptual_emb = self.perceptual_encoder(
+                obs["rgb_obs"], obs["depth_obs"], obs["robot_obs"]
+            )
             action = self.action_decoder.act(sampled_plan, perceptual_emb, latent_goal)
 
         return action
@@ -382,8 +473,14 @@ class PlayLMP(pl.LightningModule):
     def get_pp_plan_vision(self, obs: dict, goal: dict) -> Tuple[Tensor, Tensor]:
         assert len(obs["rgb_obs"]) == len(goal["rgb_obs"])
         assert len(obs["depth_obs"]) == len(goal["depth_obs"])
-        imgs = {k: torch.cat([v, goal["rgb_obs"][k]], dim=1) for k, v in obs["rgb_obs"].items()}  # (1, 2, C, H, W)
-        depth_imgs = {k: torch.cat([v, goal["depth_obs"][k]], dim=1) for k, v in obs["depth_obs"].items()}
+        imgs = {
+            k: torch.cat([v, goal["rgb_obs"][k]], dim=1)
+            for k, v in obs["rgb_obs"].items()
+        }  # (1, 2, C, H, W)
+        depth_imgs = {
+            k: torch.cat([v, goal["depth_obs"][k]], dim=1)
+            for k, v in obs["depth_obs"].items()
+        }
         state = torch.cat([obs["robot_obs"], goal["robot_obs"]], dim=1)
         with torch.no_grad():
             perceptual_emb = self.perceptual_encoder(imgs, depth_imgs, state)
@@ -396,7 +493,9 @@ class PlayLMP(pl.LightningModule):
 
     def get_pp_plan_lang(self, obs: dict, goal: dict) -> Tuple[Tensor, Tensor]:
         with torch.no_grad():
-            perceptual_emb = self.perceptual_encoder(obs["rgb_obs"], obs["depth_obs"], obs["robot_obs"])
+            perceptual_emb = self.perceptual_encoder(
+                obs["rgb_obs"], obs["depth_obs"], obs["robot_obs"]
+            )
             latent_goal = self.language_goal(goal["lang"])
             # ------------Plan Proposal------------ #
             pp_dist = self.plan_proposal(perceptual_emb[:, 0], latent_goal)

@@ -24,12 +24,13 @@ We recommend the following workflow (see examples/mujoco/d4rl_iql.py for a more 
 With the following setup, you may set wandb configurations from the command line, e.g.
     python main.py --wandb.project=my_project --wandb.group=my_group --wandb.offline
 """
+
 import wandb
 
 import tempfile
 import absl.flags as flags
 import ml_collections
-from  ml_collections.config_dict import FieldReference
+from ml_collections.config_dict import FieldReference
 import datetime
 import wandb
 import time
@@ -48,15 +49,21 @@ def default_wandb_config():
     config = ml_collections.ConfigDict()
     config.offline = False  # Syncs online or not?
     config.project = "jaxrl_m"  # WandB Project Name
-    config.entity = FieldReference(None, field_type=str)  # Which entity to log as (default: your own user)
+    config.entity = FieldReference(
+        None, field_type=str
+    )  # Which entity to log as (default: your own user)
 
     group_name = FieldReference(None, field_type=str)  # Group name
-    config.exp_prefix = group_name  # Group name (deprecated, but kept for backwards compatibility)
+    config.exp_prefix = (
+        group_name  # Group name (deprecated, but kept for backwards compatibility)
+    )
     config.group = group_name  # Group name
 
-    experiment_name = FieldReference(None, field_type=str) # Experiment name
+    experiment_name = FieldReference(None, field_type=str)  # Experiment name
     config.name = experiment_name  # Run name (will be formatted with flags / variant)
-    config.exp_descriptor = experiment_name  # Run name (deprecated, but kept for backwards compatibility)
+    config.exp_descriptor = (
+        experiment_name  # Run name (deprecated, but kept for backwards compatibility)
+    )
 
     config.unique_identifier = ""  # Unique identifier for run (will be automatically generated unless provided)
     config.random_delay = 0  # Random delay for wandb.init (in seconds)

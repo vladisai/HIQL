@@ -1,6 +1,6 @@
 import matplotlib
 
-matplotlib.use('Agg')
+matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,7 +13,7 @@ import math
 
 
 def most_squarelike(n):
-    c = int(n ** 0.5)
+    c = int(n**0.5)
     while c > 0:
         if n % c in [0, c - 1]:
             return (c, int(math.ceil(n / c)))
@@ -37,7 +37,7 @@ def make_visual(images, metrics, visualization_methods=[]):
 
     plt.tight_layout()
     canvas.draw()
-    out_image = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
+    out_image = np.frombuffer(canvas.tostring_rgb(), dtype="uint8")
     out_image = out_image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
     return out_image
 
@@ -56,7 +56,7 @@ def make_visual_no_image(metrics, visualization_methods=[]):
 
     plt.tight_layout()
     canvas.draw()
-    out_image = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
+    out_image = np.frombuffer(canvas.tostring_rgb(), dtype="uint8")
     out_image = out_image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
     return out_image
 
@@ -76,7 +76,7 @@ def view_images(ax, images, n_images=4):
     ax.imshow(sel_images)
 
 
-def visualize_metric(ax, metrics, *, metric_name, linestyle='--', marker='o', **kwargs):
+def visualize_metric(ax, metrics, *, metric_name, linestyle="--", marker="o", **kwargs):
     metric = metrics[metric_name]
     ax.plot(metric, linestyle=linestyle, marker=marker, **kwargs)
     ax.set_ylabel(metric_name)
@@ -85,5 +85,5 @@ def visualize_metric(ax, metrics, *, metric_name, linestyle='--', marker='o', **
 def visualize_metrics(ax, metrics, *, ylabel=None, metric_names, **kwargs):
     for metric_name in metric_names:
         metric = metrics[metric_name]
-        ax.plot(metric, linestyle='--', marker='o', **kwargs)
+        ax.plot(metric, linestyle="--", marker="o", **kwargs)
     ax.set_ylabel(ylabel or metric_names[0])

@@ -19,7 +19,9 @@ def pairwise(iterable):
     return zip(a, b)
 
 
-parser = argparse.ArgumentParser(description="convert dataset to 15 hz (leave one step out)")
+parser = argparse.ArgumentParser(
+    description="convert dataset to 15 hz (leave one step out)"
+)
 parser.add_argument("src", type=str)
 parser.add_argument("dest", type=str)
 parser.add_argument("--max_rel_pos", type=float, default=0.04)
@@ -50,11 +52,16 @@ for subdir in ["training", "validation"]:
                 old_data = np.load(src_path / subdir / f"episode_{old_i:06d}.npz")
                 data = dict(old_data)
                 if old_i < end:
-                    next_old_data = np.load(src_path / subdir / f"episode_{old_i + 1:06d}.npz")
+                    next_old_data = np.load(
+                        src_path / subdir / f"episode_{old_i + 1:06d}.npz"
+                    )
                     next_data = dict(next_old_data)
                     data["actions"] = next_data["actions"]
                     data["rel_actions"] = utils.to_relative_action(
-                        data["actions"], data["robot_obs"], max_pos=args.max_rel_pos, max_orn=args.max_rel_orn
+                        data["actions"],
+                        data["robot_obs"],
+                        max_pos=args.max_rel_pos,
+                        max_orn=args.max_rel_orn,
                     )
                 np.savez(dest_path / subdir / f"episode_{new_i:06d}.npz", **data)
                 new_i += 1
@@ -66,7 +73,9 @@ for subdir in ["training", "validation"]:
     np.save(dest_path / subdir / "ep_start_end_ids.npy", new_ep_start_end_ids)
     shutil.copy(src_path / subdir / "statistics.yaml", dest_path / subdir)
     os.makedirs(dest_path / subdir / ".hydra")
-    shutil.copytree(src_path / subdir / ".hydra", dest_path / subdir / ".hydra", dirs_exist_ok=True)
+    shutil.copytree(
+        src_path / subdir / ".hydra", dest_path / subdir / ".hydra", dirs_exist_ok=True
+    )
     cfg = OmegaConf.load(dest_path / subdir / ".hydra/merged_config.yaml")
     cfg.robot.max_rel_pos = args.max_rel_pos
     cfg.robot.max_rel_orn = args.max_rel_orn

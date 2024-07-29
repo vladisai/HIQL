@@ -10,8 +10,16 @@ import time
 sys.path.insert(0, Path(__file__).absolute().parents[2].as_posix())
 
 from calvin_agent.evaluation.multistep_sequences import get_sequences
-from calvin_agent.evaluation.utils import get_default_model_and_env, get_env_state_for_initial_condition, join_vis_lang
-from calvin_agent.utils.utils import get_all_checkpoints, get_checkpoints_for_epochs, get_last_checkpoint
+from calvin_agent.evaluation.utils import (
+    get_default_model_and_env,
+    get_env_state_for_initial_condition,
+    join_vis_lang,
+)
+from calvin_agent.utils.utils import (
+    get_all_checkpoints,
+    get_checkpoints_for_epochs,
+    get_last_checkpoint,
+)
 import hydra
 import numpy as np
 from omegaconf import OmegaConf
@@ -48,7 +56,9 @@ def get_log_dir(log_dir):
 
 class CustomModel:
     def __init__(self):
-        logger.warning("Please implement these methods as an interface to your custom model architecture.")
+        logger.warning(
+            "Please implement these methods as an interface to your custom model architecture."
+        )
         raise NotImplementedError
 
     def reset(self):
@@ -70,7 +80,9 @@ class CustomModel:
 
 class CustomLangEmbeddings:
     def __init__(self):
-        logger.warning("Please implement these methods in order to use your own language embeddings")
+        logger.warning(
+            "Please implement these methods in order to use your own language embeddings"
+        )
         raise NotImplementedError
 
     def get_lang_goal(self, task_annotation):
@@ -125,9 +137,15 @@ def print_and_save(total_results, plan_dicts, args):
         task_info = {}
         for task in total:
             task_info[task] = {"success": cnt_success[task], "total": total[task]}
-            print(f"{task}: {cnt_success[task]} / {total[task]} |  SR: {cnt_success[task] / total[task] * 100:.1f}%")
+            print(
+                f"{task}: {cnt_success[task]} / {total[task]} |  SR: {cnt_success[task] / total[task] * 100:.1f}%"
+            )
 
-        data = {"avg_seq_len": avg_seq_len, "chain_sr": chain_sr, "task_info": task_info}
+        data = {
+            "avg_seq_len": avg_seq_len,
+            "chain_sr": chain_sr,
+            "task_info": task_info,
+        }
 
         current_data[epoch] = data
 
@@ -141,7 +159,9 @@ def print_and_save(total_results, plan_dicts, args):
     json_data = {**previous_data, **current_data}
     with open(log_dir / "results.json", "w") as file:
         json.dump(json_data, file)
-    print(f"Best model: epoch {max(ranking, key=ranking.get)} with average sequences length of {max(ranking.values())}")
+    print(
+        f"Best model: epoch {max(ranking, key=ranking.get)} with average sequences length of {max(ranking.values())}"
+    )
 
     for checkpoint, plan_dict in plan_dicts.items():
         epoch = checkpoint.stem.split("=")[1]
@@ -156,15 +176,23 @@ def print_and_save(total_results, plan_dicts, args):
         latent_goals = torch.cat(latent_goals)
         plans = torch.cat(plans)
         np.savez(
-            f"{log_dir / f'tsne_data_{epoch}.npz'}", ids=ids, labels=labels, plans=plans, latent_goals=latent_goals
+            f"{log_dir / f'tsne_data_{epoch}.npz'}",
+            ids=ids,
+            labels=labels,
+            plans=plans,
+            latent_goals=latent_goals,
         )
 
 
 def evaluate_policy(model, env, lang_embeddings, args):
     conf_dir = Path(__file__).absolute().parents[2] / "conf"
-    task_cfg = OmegaConf.load(conf_dir / "callbacks/rollout/tasks/new_playtable_tasks.yaml")
+    task_cfg = OmegaConf.load(
+        conf_dir / "callbacks/rollout/tasks/new_playtable_tasks.yaml"
+    )
     task_oracle = hydra.utils.instantiate(task_cfg)
-    val_annotations = OmegaConf.load(conf_dir / "annotations/new_playtable_validation.yaml")
+    val_annotations = OmegaConf.load(
+        conf_dir / "annotations/new_playtable_validation.yaml"
+    )
 
     eval_sequences = get_sequences(args.num_sequences)
 
@@ -176,19 +204,41 @@ def evaluate_policy(model, env, lang_embeddings, args):
 
     for initial_state, eval_sequence in eval_sequences:
         result = evaluate_sequence(
-            env, model, task_oracle, initial_state, eval_sequence, lang_embeddings, val_annotations, args, plans
+            env,
+            model,
+            task_oracle,
+            initial_state,
+            eval_sequence,
+            lang_embeddings,
+            val_annotations,
+            args,
+            plans,
         )
         results.append(result)
         if not args.debug:
             eval_sequences.set_description(
-                " ".join([f"{i + 1}/5 : {v * 100:.1f}% |" for i, v in enumerate(count_success(results))]) + "|"
+                " ".join(
+                    [
+                        f"{i + 1}/5 : {v * 100:.1f}% |"
+                        for i, v in enumerate(count_success(results))
+                    ]
+                )
+                + "|"
             )
 
     return results, plans
 
 
 def evaluate_sequence(
-    env, model, task_checker, initial_state, eval_sequence, lang_embeddings, val_annotations, args, plans
+    env,
+    model,
+    task_checker,
+    initial_state,
+    eval_sequence,
+    lang_embeddings,
+    val_annotations,
+    args,
+    plans,
 ):
     robot_obs, scene_obs = get_env_state_for_initial_condition(initial_state)
     env.reset(robot_obs=robot_obs, scene_obs=scene_obs)
@@ -201,7 +251,16 @@ def evaluate_sequence(
         print(f"Evaluating sequence: {' -> '.join(eval_sequence)}")
         print("Subtask: ", end="")
     for subtask in eval_sequence:
-        success = rollout(env, model, task_checker, args, subtask, lang_embeddings, val_annotations, plans)
+        success = rollout(
+            env,
+            model,
+            task_checker,
+            args,
+            subtask,
+            lang_embeddings,
+            val_annotations,
+            plans,
+        )
         if success:
             success_counter += 1
         else:
@@ -209,7 +268,9 @@ def evaluate_sequence(
     return success_counter
 
 
-def rollout(env, model, task_oracle, args, subtask, lang_embeddings, val_annotations, plans):
+def rollout(
+    env, model, task_oracle, args, subtask, lang_embeddings, val_annotations, plans
+):
     if args.debug:
         print(f"{subtask} ", end="")
         time.sleep(0.5)
@@ -232,7 +293,9 @@ def rollout(env, model, task_oracle, args, subtask, lang_embeddings, val_annotat
             join_vis_lang(img, lang_annotation)
             # time.sleep(0.1)
         # check if current step solves a task
-        current_task_info = task_oracle.get_task_info_for_set(start_info, current_info, {subtask})
+        current_task_info = task_oracle.get_task_info_for_set(
+            start_info, current_info, {subtask}
+        )
         if len(current_task_info) > 0:
             if args.debug:
                 print(colored("success", "green"), end=" ")
@@ -244,12 +307,18 @@ def rollout(env, model, task_oracle, args, subtask, lang_embeddings, val_annotat
 
 def main():
     seed_everything(0, workers=True)  # type:ignore
-    parser = argparse.ArgumentParser(description="Evaluate a trained model on multistep sequences with language goals.")
-    parser.add_argument("--dataset_path", type=str, help="Path to the dataset root directory.")
+    parser = argparse.ArgumentParser(
+        description="Evaluate a trained model on multistep sequences with language goals."
+    )
+    parser.add_argument(
+        "--dataset_path", type=str, help="Path to the dataset root directory."
+    )
 
     # arguments for loading default model
     parser.add_argument(
-        "--train_folder", type=str, help="If calvin_agent was used to train, specify path to the log dir."
+        "--train_folder",
+        type=str,
+        help="If calvin_agent was used to train, specify path to the log dir.",
     )
     parser.add_argument(
         "--checkpoints",
@@ -271,13 +340,25 @@ def main():
 
     # arguments for loading custom model or custom language embeddings
     parser.add_argument(
-        "--custom_model", action="store_true", help="Use this option to evaluate a custom model architecture."
+        "--custom_model",
+        action="store_true",
+        help="Use this option to evaluate a custom model architecture.",
     )
-    parser.add_argument("--custom_lang_embeddings", action="store_true", help="Use custom language embeddings.")
+    parser.add_argument(
+        "--custom_lang_embeddings",
+        action="store_true",
+        help="Use custom language embeddings.",
+    )
 
-    parser.add_argument("--debug", action="store_true", help="Print debug info and visualize environment.")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print debug info and visualize environment.",
+    )
 
-    parser.add_argument("--log_dir", default=None, type=str, help="Where to log the evaluation results.")
+    parser.add_argument(
+        "--log_dir", default=None, type=str, help="Where to log the evaluation results."
+    )
 
     parser.add_argument("--device", default=0, type=int, help="CUDA device")
     args = parser.parse_args()
@@ -299,15 +380,23 @@ def main():
         assert "train_folder" in args
 
         checkpoints = []
-        if args.checkpoints is None and args.last_k_checkpoints is None and args.checkpoint is None:
+        if (
+            args.checkpoints is None
+            and args.last_k_checkpoints is None
+            and args.checkpoint is None
+        ):
             print("Evaluating model with last checkpoint.")
             checkpoints = [get_last_checkpoint(Path(args.train_folder))]
         elif args.checkpoints is not None:
             print(f"Evaluating model with checkpoints {args.checkpoints}.")
-            checkpoints = get_checkpoints_for_epochs(Path(args.train_folder), args.checkpoints)
+            checkpoints = get_checkpoints_for_epochs(
+                Path(args.train_folder), args.checkpoints
+            )
         elif args.checkpoints is None and args.last_k_checkpoints is not None:
             print(f"Evaluating model with last {args.last_k_checkpoints} checkpoints.")
-            checkpoints = get_all_checkpoints(Path(args.train_folder))[-args.last_k_checkpoints :]
+            checkpoints = get_all_checkpoints(Path(args.train_folder))[
+                -args.last_k_checkpoints :
+            ]
         elif args.checkpoint is not None:
             checkpoints = [Path(args.checkpoint)]
 
@@ -323,7 +412,9 @@ def main():
                 lang_embeddings=lang_embeddings,
                 device_id=args.device,
             )
-            results[checkpoint], plans[checkpoint] = evaluate_policy(model, env, lang_embeddings, args)
+            results[checkpoint], plans[checkpoint] = evaluate_policy(
+                model, env, lang_embeddings, args
+            )
 
         print_and_save(results, plans, args)
 

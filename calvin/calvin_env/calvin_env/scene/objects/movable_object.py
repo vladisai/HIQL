@@ -9,7 +9,18 @@ log = logging.getLogger(__name__)
 
 
 class MovableObject(BaseObject):
-    def __init__(self, name, obj_cfg, p, cid, data_path, global_scaling, euler_obs, surfaces, np_random):
+    def __init__(
+        self,
+        name,
+        obj_cfg,
+        p,
+        cid,
+        data_path,
+        global_scaling,
+        euler_obs,
+        surfaces,
+        np_random,
+    ):
         super().__init__(name, obj_cfg, p, cid, data_path, global_scaling)
         self.initial_pos = obj_cfg["initial_pos"]
         self.initial_orn = obj_cfg["initial_orn"]
@@ -54,14 +65,18 @@ class MovableObject(BaseObject):
                 try:
                     sampling_range = np.array(self.surfaces[self.initial_pos])
                 except ConfigKeyError:
-                    log.error(f"surface {self.initial_pos} not specified in scene config")
+                    log.error(
+                        f"surface {self.initial_pos} not specified in scene config"
+                    )
                     raise KeyError
             initial_pos = self.np_random.uniform(sampling_range[0], sampling_range[1])
         initial_orn = self.initial_orn
         if isinstance(self.initial_orn, str):
             if self.initial_orn == "any":
                 initial_orn = np.array(
-                    self.p.getQuaternionFromEuler(self.np_random.uniform([0, 0, -np.pi], [0, 0, np.pi]))
+                    self.p.getQuaternionFromEuler(
+                        self.np_random.uniform([0, 0, -np.pi], [0, 0, np.pi])
+                    )
                 )
             else:
                 log.error("Only keyword 'any' supported at the moment")
@@ -69,20 +84,26 @@ class MovableObject(BaseObject):
         return initial_pos, initial_orn
 
     def get_state(self):
-        pos, orn = self.p.getBasePositionAndOrientation(self.uid, physicsClientId=self.cid)
+        pos, orn = self.p.getBasePositionAndOrientation(
+            self.uid, physicsClientId=self.cid
+        )
         if self.euler_obs:
             orn = self.p.getEulerFromQuaternion(orn)
         return np.concatenate([pos, orn])
 
     def get_info(self):
-        pos, orn = self.p.getBasePositionAndOrientation(self.uid, physicsClientId=self.cid)
+        pos, orn = self.p.getBasePositionAndOrientation(
+            self.uid, physicsClientId=self.cid
+        )
         lin_vel, ang_vel = self.p.getBaseVelocity(self.uid, physicsClientId=self.cid)
         obj_info = {
             "current_pos": pos,
             "current_orn": orn,
             "current_lin_vel": lin_vel,
             "current_ang_vel": ang_vel,
-            "contacts": self.p.getContactPoints(bodyA=self.uid, physicsClientId=self.cid),
+            "contacts": self.p.getContactPoints(
+                bodyA=self.uid, physicsClientId=self.cid
+            ),
             "uid": self.uid,
         }
         return obj_info
@@ -91,5 +112,7 @@ class MovableObject(BaseObject):
         return {
             "uid": self.uid,
             "info": self.p.getBodyInfo(self.uid, physicsClientId=self.cid),
-            "pose": self.p.getBasePositionAndOrientation(self.uid, physicsClientId=self.cid),
+            "pose": self.p.getBasePositionAndOrientation(
+                self.uid, physicsClientId=self.cid
+            ),
         }

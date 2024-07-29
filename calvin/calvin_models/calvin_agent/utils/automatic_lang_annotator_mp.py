@@ -36,7 +36,9 @@ def merge_data(list_of_data):
                 elif isinstance(v2, np.ndarray) and len(merged_data[k][k2]) == 0:
                     merged_data[k][k2] = v2
                 elif isinstance(v2, np.ndarray) and len(merged_data[k][k2]) != 0:
-                    merged_data[k][k2] = np.concatenate((merged_data[k][k2], v2), axis=0)
+                    merged_data[k][k2] = np.concatenate(
+                        (merged_data[k][k2], v2), axis=0
+                    )
                 else:
                     print(type(v2))
                     raise ValueError
@@ -95,11 +97,16 @@ class Annotator(Callback):
         self.device = pl_module.device
         self.val_dataset = trainer.val_dataloaders[0].dataset.datasets["vis"]  # type: ignore
         self.train_dataset = trainer.train_dataloader.dataset.datasets["vis"]
-        self.scene_idx_info = np.load(self.train_dataset.abs_datasets_dir / "scene_info.npy", allow_pickle=True).item()
+        self.scene_idx_info = np.load(
+            self.train_dataset.abs_datasets_dir / "scene_info.npy", allow_pickle=True
+        ).item()
 
         self.envs = {
             scene: hydra.utils.instantiate(
-                self.cfg.callbacks.rollout.env_cfg, self.val_dataset, pl_module.device, scene=scene
+                self.cfg.callbacks.rollout.env_cfg,
+                self.val_dataset,
+                pl_module.device,
+                scene=scene,
             )
             for scene, _ in self.scene_idx_info.items()
         }
@@ -115,8 +122,16 @@ class Annotator(Callback):
         self.create_folders()
         self.lang_model = hydra.utils.instantiate(self.cfg.model)
         self.compute_val_embeddings()
-        self.num_samples_train = int(self.cfg.eps * len(self.train_dataset) / len(self.cfg.train_instructions.keys()))
-        self.num_samples_val = int(self.cfg.eps * len(self.val_dataset) / len(self.cfg.train_instructions.keys()))
+        self.num_samples_train = int(
+            self.cfg.eps
+            * len(self.train_dataset)
+            / len(self.cfg.train_instructions.keys())
+        )
+        self.num_samples_val = int(
+            self.cfg.eps
+            * len(self.val_dataset)
+            / len(self.cfg.train_instructions.keys())
+        )
 
     def on_validation_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
         """Called when the validation loop begins."""
@@ -137,12 +152,14 @@ class Annotator(Callback):
         dataloader_idx: int,
     ) -> None:
         batch = batch["vis"] if isinstance(batch, dict) else batch
-        self.collected_data_val, self.demo_task_counter_val, current_task_counter = self.annotate(
-            batch,
-            self.val_dataset,
-            self.collected_data_val,
-            self.demo_task_counter_val,
-            self.num_samples_val,
+        self.collected_data_val, self.demo_task_counter_val, current_task_counter = (
+            self.annotate(
+                batch,
+                self.val_dataset,
+                self.collected_data_val,
+                self.demo_task_counter_val,
+                self.num_samples_val,
+            )
         )
         if dist.is_available() and dist.is_initialized():
             global_counters = [None for _ in range(torch.distributed.get_world_size())]
@@ -150,7 +167,11 @@ class Annotator(Callback):
             current_task_counter = reduce(add, global_counters)
         self.demo_task_counter_val += current_task_counter
         if self.check_done(
-            self.demo_task_counter_val, self.num_samples_val, batch_idx, trainer.num_val_batches[0], "val"
+            self.demo_task_counter_val,
+            self.num_samples_val,
+            batch_idx,
+            trainer.num_val_batches[0],
+            "val",
         ):
             print()
             print()
@@ -172,8 +193,16 @@ class Annotator(Callback):
     ) -> None:
         batch = batch["vis"] if isinstance(batch, dict) else batch
 
-        self.collected_data_train, self.demo_task_counter_train, current_task_counter = self.annotate(
-            batch, self.train_dataset, self.collected_data_train, self.demo_task_counter_train, self.num_samples_train
+        (
+            self.collected_data_train,
+            self.demo_task_counter_train,
+            current_task_counter,
+        ) = self.annotate(
+            batch,
+            self.train_dataset,
+            self.collected_data_train,
+            self.demo_task_counter_train,
+            self.num_samples_train,
         )
         if dist.is_available() and dist.is_initialized():
             global_counters = [None for _ in range(torch.distributed.get_world_size())]
@@ -181,7 +210,11 @@ class Annotator(Callback):
             current_task_counter = reduce(add, global_counters)
         self.demo_task_counter_train += current_task_counter
         if self.check_done(
-            self.demo_task_counter_train, self.num_samples_train, batch_idx, trainer.num_training_batches, "train"
+            self.demo_task_counter_train,
+            self.num_samples_train,
+            batch_idx,
+            trainer.num_training_batches,
+            "train",
         ):
             print()
             print()
@@ -192,11 +225,22 @@ class Annotator(Callback):
             print()
             pl_module.finished_annotation_train = True  # type: ignore
 
-    def on_train_epoch_end(self, trainer: Trainer, pl_module: LightningModule, unused: Optional[int] = None) -> None:
-        self.save_and_postprocess(self.collected_data_train, self.train_lang_folder, "train", len(self.train_dataset))
+    def on_train_epoch_end(
+        self, trainer: Trainer, pl_module: LightningModule, unused: Optional[int] = None
+    ) -> None:
+        self.save_and_postprocess(
+            self.collected_data_train,
+            self.train_lang_folder,
+            "train",
+            len(self.train_dataset),
+        )
 
-    def on_validation_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        self.save_and_postprocess(self.collected_data_val, self.val_lang_folder, "val", len(self.val_dataset))
+    def on_validation_epoch_end(
+        self, trainer: Trainer, pl_module: LightningModule
+    ) -> None:
+        self.save_and_postprocess(
+            self.collected_data_val, self.val_lang_folder, "val", len(self.val_dataset)
+        )
 
     def save_and_postprocess(self, collected_data, lang_folder, mod, length):
         if dist.is_available() and dist.is_initialized():
@@ -246,7 +290,10 @@ class Annotator(Callback):
                 + "%"
                 + "]"
             )
-        return len(counter.values()) >= len(self.cfg.train_instructions) and min(counter.values()) >= num_samples
+        return (
+            len(counter.values()) >= len(self.cfg.train_instructions)
+            and min(counter.values()) >= num_samples
+        )
 
     def select_env(self, dataset, idx):
         if "validation" in dataset.abs_datasets_dir.as_posix():
@@ -257,7 +304,9 @@ class Annotator(Callback):
                 return self.envs[scene]
         raise ValueError
 
-    def annotate(self, episode, dataset, collected_data, global_task_counter, num_samples):
+    def annotate(
+        self, episode, dataset, collected_data, global_task_counter, num_samples
+    ):
         state_obs = episode["robot_obs"]
         reset_info = episode["state_info"]
         idx = episode["idx"]
@@ -281,7 +330,11 @@ class Annotator(Callback):
             if (
                 len(task_info) != 1
                 or not task_info <= self.cfg.train_instructions.keys()
-                or len(self.tasks.get_task_info_for_set(middle_info, close_to_end_info, task_info))
+                or len(
+                    self.tasks.get_task_info_for_set(
+                        middle_info, close_to_end_info, task_info
+                    )
+                )
             ):
                 continue
             task = list(task_info)[0]
@@ -294,9 +347,9 @@ class Annotator(Callback):
             env.reset(reset_info, i, 32)
             middle_info2 = env.get_info()
 
-            if len(self.tasks.get_task_info_for_set(start_info, goal_info, task_info)) and not len(
-                self.tasks.get_task_info(start_info, middle_info2)
-            ):
+            if len(
+                self.tasks.get_task_info_for_set(start_info, goal_info, task_info)
+            ) and not len(self.tasks.get_task_info(start_info, middle_info2)):
                 start_idx = idx[i]
                 window_size = seq_length
             else:
@@ -305,7 +358,9 @@ class Annotator(Callback):
 
             # seq_length = torch.unique(actions[i], dim=0).shape[0]
             current_task_counter += Counter(task_info)
-            collected_data = self.label_seq(collected_data, dataset, window_size, start_idx, task)
+            collected_data = self.label_seq(
+                collected_data, dataset, window_size, start_idx, task
+            )
         return collected_data, global_task_counter, current_task_counter
 
     def label_seq(self, collected_data, dataset, seq_length, idx, task):

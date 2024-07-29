@@ -35,7 +35,7 @@ def test_render_from_depth_osmesa():
     # np.save(os.path.join(cur_path, "color-osmesa-ground-truth.npy"), color)
 
     diff = color - color_gt
-    rms = (diff ** 2).mean() ** 0.5
+    rms = (diff**2).mean() ** 0.5
 
     atol = 0.0
     assert rms <= atol, f"Expect RMS < {atol} but got {rms}"

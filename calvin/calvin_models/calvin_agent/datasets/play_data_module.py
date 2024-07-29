@@ -4,7 +4,11 @@ from typing import Dict, List
 
 import calvin_agent
 from calvin_agent.datasets.utils.episode_utils import load_dataset_statistics
-from calvin_agent.datasets.utils.shared_memory_utils import load_shm_lookup, save_shm_lookup, SharedMemoryLoader
+from calvin_agent.datasets.utils.shared_memory_utils import (
+    load_shm_lookup,
+    save_shm_lookup,
+    SharedMemoryLoader,
+)
 import hydra
 import numpy as np
 from omegaconf import DictConfig, OmegaConf
@@ -46,7 +50,12 @@ class PlayDataModule(pl.LightningDataModule):
 
     def prepare_data(self, *args, **kwargs):
         # check if files already exist
-        dataset_exist = np.any([len(list(self.training_dir.glob(extension))) for extension in ["*.npz", "*.pkl"]])
+        dataset_exist = np.any(
+            [
+                len(list(self.training_dir.glob(extension)))
+                for extension in ["*.npz", "*.pkl"]
+            ]
+        )
 
         # download and unpack images
         if not dataset_exist:
@@ -59,7 +68,9 @@ class PlayDataModule(pl.LightningDataModule):
 
         if self.use_shm:
             # When using shared memory dataset, initialize lookups
-            train_shmem_loader = SharedMemoryLoader(self.datasets_cfg, self.training_dir)
+            train_shmem_loader = SharedMemoryLoader(
+                self.datasets_cfg, self.training_dir
+            )
             train_shm_lookup = train_shmem_loader.load_data_in_shared_memory()
 
             val_shmem_loader = SharedMemoryLoader(self.datasets_cfg, self.val_dir)
@@ -68,27 +79,51 @@ class PlayDataModule(pl.LightningDataModule):
             save_shm_lookup(train_shm_lookup, val_shm_lookup)
 
     def setup(self, stage=None):
-        transforms = load_dataset_statistics(self.training_dir, self.val_dir, self.transforms)
+        transforms = load_dataset_statistics(
+            self.training_dir, self.val_dir, self.transforms
+        )
 
         self.train_transforms = {
-            cam: [hydra.utils.instantiate(transform) for transform in transforms.train[cam]] for cam in transforms.train
+            cam: [
+                hydra.utils.instantiate(transform)
+                for transform in transforms.train[cam]
+            ]
+            for cam in transforms.train
         }
 
         self.val_transforms = {
-            cam: [hydra.utils.instantiate(transform) for transform in transforms.val[cam]] for cam in transforms.val
+            cam: [
+                hydra.utils.instantiate(transform) for transform in transforms.val[cam]
+            ]
+            for cam in transforms.val
         }
-        self.train_transforms = {key: torchvision.transforms.Compose(val) for key, val in self.train_transforms.items()}
-        self.val_transforms = {key: torchvision.transforms.Compose(val) for key, val in self.val_transforms.items()}
-        self.train_datasets, self.train_sampler, self.val_datasets, self.val_sampler = {}, {}, {}, {}
+        self.train_transforms = {
+            key: torchvision.transforms.Compose(val)
+            for key, val in self.train_transforms.items()
+        }
+        self.val_transforms = {
+            key: torchvision.transforms.Compose(val)
+            for key, val in self.val_transforms.items()
+        }
+        self.train_datasets, self.train_sampler, self.val_datasets, self.val_sampler = (
+            {},
+            {},
+            {},
+            {},
+        )
 
         if self.use_shm:
             train_shm_lookup, val_shm_lookup = load_shm_lookup()
 
         for _, dataset in self.datasets_cfg.items():
             train_dataset = hydra.utils.instantiate(
-                dataset, datasets_dir=self.training_dir, transforms=self.train_transforms
+                dataset,
+                datasets_dir=self.training_dir,
+                transforms=self.train_transforms,
             )
-            val_dataset = hydra.utils.instantiate(dataset, datasets_dir=self.val_dir, transforms=self.val_transforms)
+            val_dataset = hydra.utils.instantiate(
+                dataset, datasets_dir=self.val_dir, transforms=self.val_transforms
+            )
             if self.use_shm:
                 train_dataset.setup_shm_lookup(train_shm_lookup)
                 val_dataset.setup_shm_lookup(val_shm_lookup)

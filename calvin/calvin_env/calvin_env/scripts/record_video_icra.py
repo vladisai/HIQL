@@ -41,7 +41,9 @@ def depth2rgb(img, minval=0, maxval=1):
 
 @hydra.main(config_path="../../conf", config_name="config_data_collection")
 def run_env(cfg):
-    env = hydra.utils.instantiate(cfg.env, show_gui=False, use_vr=False, use_scene_info=True)
+    env = hydra.utils.instantiate(
+        cfg.env, show_gui=False, use_vr=False, use_scene_info=True
+    )
 
     root_dir = Path("/home/hermannl/data/calvin_abcd_example")
 
@@ -52,13 +54,22 @@ def run_env(cfg):
     t1 = time.time()
 
     video = cv2.VideoWriter(
-        "/home/hermannl/Documents/calvin/env_A_tactile.avi", cv2.VideoWriter_fourcc(*"XVID"), 30, (240, 160)
+        "/home/hermannl/Documents/calvin/env_A_tactile.avi",
+        cv2.VideoWriter_fourcc(*"XVID"),
+        30,
+        (240, 160),
     )
     video_static = cv2.VideoWriter(
-        "/home/hermannl/Documents/calvin/env_A_static_depth.avi", cv2.VideoWriter_fourcc(*"XVID"), 30, (200, 200)
+        "/home/hermannl/Documents/calvin/env_A_static_depth.avi",
+        cv2.VideoWriter_fourcc(*"XVID"),
+        30,
+        (200, 200),
     )
     video_gripper = cv2.VideoWriter(
-        "/home/hermannl/Documents/calvin/env_A_gripper_depth.avi", cv2.VideoWriter_fourcc(*"XVID"), 30, (100, 100)
+        "/home/hermannl/Documents/calvin/env_A_gripper_depth.avi",
+        cv2.VideoWriter_fourcc(*"XVID"),
+        30,
+        (100, 100),
     )
     for s, e in ep_start_end_ids:
         print("new_episode")
@@ -78,13 +89,19 @@ def run_env(cfg):
             cv2.imshow("im", im)
             cv2.waitKey(1)
             video.write(im[:, :, ::-1])
-            video_gripper.write(depth2rgb(obs["depth_obs"][1], minval=0.1, maxval=0.5)[:, :, ::-1])
-            video_static.write(depth2rgb(obs["depth_obs"][0], minval=3.5, maxval=5)[:, :, ::-1])
+            video_gripper.write(
+                depth2rgb(obs["depth_obs"][1], minval=0.1, maxval=0.5)[:, :, ::-1]
+            )
+            video_static.write(
+                depth2rgb(obs["depth_obs"][0], minval=3.5, maxval=5)[:, :, ::-1]
+            )
             # action = data["rel_actions"]
             action = np.split(data["actions"], [3, 6])
             action = noise(action)
 
-            rel_actions.append(utils.to_relative_action(data["actions"], data["robot_obs"][:6]))
+            rel_actions.append(
+                utils.to_relative_action(data["actions"], data["robot_obs"][:6])
+            )
             # action = utils.to_relative_action(data["actions"], data["robot_obs"], max_pos=0.04, max_orn=0.1)
             # tcp_pos, tcp_orn = p.getLinkState(env.robot.robot_uid, env.robot.tcp_link_id, physicsClientId=env.cid)[:2]
             # tcp_orn = p.getEulerFromQuaternion(tcp_orn)

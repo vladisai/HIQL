@@ -25,6 +25,7 @@ from camera import Camera
 
 _log = logging.getLogger(__name__)
 
+
 def _get_dtype_min_max(dtype):
     if np.issubdtype(dtype, np.integer):
         return np.iinfo(dtype).min, np.iinfo(dtype).max
@@ -50,7 +51,10 @@ def convert_obs_to_obs_space(obs):
     # for any dict-like container
     if isinstance(obs, collections.abc.Mapping):
         # SpaceDict inherits from gym.spaces.Dict and provides more functionalities
-        return px.utils.SpaceDict({k: convert_obs_to_obs_space(v) for k, v in obs.items()})
+        return px.utils.SpaceDict(
+            {k: convert_obs_to_obs_space(v) for k, v in obs.items()}
+        )
+
 
 def _get_default_config_path():
     filename = "conf/sawyer_gripper_env.yaml"
@@ -206,10 +210,13 @@ class SawyerGripperEnv(gym.Env):
         del action_space["wait"]
         return action_space
 
+
 def make_sawyer_gripper_env():
     env = SawyerGripperEnv()
     return env
 
+
 register(
-    id="sawyer-gripper-v0", entry_point="sawyer_gripper_env:make_sawyer_gripper_env",
+    id="sawyer-gripper-v0",
+    entry_point="sawyer_gripper_env:make_sawyer_gripper_env",
 )

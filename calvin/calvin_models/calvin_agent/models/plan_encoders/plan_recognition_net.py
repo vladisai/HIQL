@@ -31,10 +31,16 @@ class PlanRecognitionNetwork(nn.Module):
             batch_first=True,
             dropout=birnn_dropout_p,
         )  # shape: [N, seq_len, 64+8]
-        self.mean_fc = nn.Linear(in_features=4096, out_features=self.plan_features)  # shape: [N, seq_len, 4096]
-        self.variance_fc = nn.Linear(in_features=4096, out_features=self.plan_features)  # shape: [N, seq_len, 4096]
+        self.mean_fc = nn.Linear(
+            in_features=4096, out_features=self.plan_features
+        )  # shape: [N, seq_len, 4096]
+        self.variance_fc = nn.Linear(
+            in_features=4096, out_features=self.plan_features
+        )  # shape: [N, seq_len, 4096]
 
-    def forward(self, perceptual_emb: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, perceptual_emb: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         x, hn = self.birnn_model(perceptual_emb)
         x = x[:, -1]  # we just need only last unit output
         mean = self.mean_fc(x)
