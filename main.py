@@ -1,4 +1,8 @@
 import os
+
+os.environ["MUJOCO_GL"] = "egl"  # noqa
+os.environ["LAZY_LEGACY_OP"] = "0"  # noqa
+
 import time
 from datetime import datetime
 
@@ -9,8 +13,12 @@ import jax
 import jax.numpy as jnp
 import flax
 import gzip
+import logging
 
-import tqdm
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+
+from tqdm.auto import tqdm
 from src.agents import hiql as learner
 from src import d4rl_utils, d4rl_ant, ant_diagnostics, viz_utils
 from src.gc_dataset import GCSDataset
@@ -60,7 +68,11 @@ flags.DEFINE_float("high_temperature", 1, "")
 flags.DEFINE_integer("visual", 0, "")
 flags.DEFINE_string("encoder", "impala", "")
 
+flags.DEFINE_string("mw_dataset_path", None, "")
+
 flags.DEFINE_string("algo_name", None, "")  # Not used, only for logging
+
+flags.DEFINE_string("name_suffix", "", "")
 
 wandb_config = default_wandb_config()
 wandb_config.update(
@@ -146,6 +158,7 @@ def main(_):
         exp_name += f'rs_{os.environ["SLURM_RESTART_COUNT"]}.'
     exp_name += f"{g_start_time}"
     exp_name += f'_{FLAGS.wandb["name"]}'
+    exp_name += f"_{FLAGS.name_suffix}"
 
     FLAGS.gcdataset["p_randomgoal"] = FLAGS.p_randomgoal
     FLAGS.gcdataset["p_trajgoal"] = FLAGS.p_trajgoal
@@ -365,14 +378,68 @@ def main(_):
 
         discrete = True
         example_action = np.max(dataset["actions"], keepdims=True)
+    elif FLAGS.env_name.startswith("mw"):  # metaworld
+        from src.envs.metaworld import build_metaworld_env, MetaWorldConfig
+        from src.mw_dataset import get_mw_dataset
+
+        mw_cfg = MetaWorldConfig(
+            task=FLAGS.env_name,
+            visual=FLAGS.visual,
+            freeze_rand_vec=False,
+        )
+
+        env = build_metaworld_env(mw_cfg)
+
+        log.info(f"Loading the dataset")
+        dataset = get_mw_dataset(FLAGS.mw_dataset_path, visual=FLAGS.visual)
+        example_action = np.max(dataset["actions"], keepdims=True)
+
     else:
         raise NotImplementedError
 
-    env.reset()
+    obs, info = env.reset()
 
+    # def debug_and_exit():
+    #     from src.envs.metaworld import get_goal_state
+
+    #     import matplotlib
+    #     from matplotlib import pyplot as plt
+
+    #     print("Getting goal state")
+
+    #     matplotlib.use("Agg")
+    #     plt.figure(dpi=200)
+    #     n_samples = 5
+    #     for i in tqdm(range(n_samples), desc="Rendering goal states"):
+    #         env = build_metaworld_env(mw_cfg)
+    #         obs, info = env.reset()
+    #         _, goal_img = get_goal_state(env, FLAGS.env_name)
+    #         obs, _, _, _, _ = env.step(np.zeros(env.action_space.shape))
+
+    #         print(f"seed {i}, {obs.sum()=} {obs=}")
+    #         plt.subplot(2, n_samples, i + 1)
+    #         plt.imshow(env.render(mode="rgb_array"))
+    #         plt.title(f"env")
+    #         plt.axis("off")
+
+    #         plt.subplot(2, n_samples, n_samples + i + 1)
+    #         plt.imshow(goal_img.transpose(1, 2, 0))
+    #         plt.title(f"goal")
+    #         plt.axis("off")
+
+    #     plt.savefig("goal_states.png")
+    #     plt.close()
+
+    #     exit()
+
+    # debug_and_exit()
+
+    log.info(f"Creating GCSDataset")
     pretrain_dataset = GCSDataset(dataset, **FLAGS.gcdataset.to_dict())
     total_steps = FLAGS.pretrain_steps
     example_batch = dataset.sample(1)
+
+    log.info("Creating learner")
     agent = learner.create_learner(
         FLAGS.seed,
         example_batch["observations"],
@@ -396,6 +463,8 @@ def main(_):
         example_trajectory = pretrain_dataset.sample(50, indx=np.arange(5000, 5050))
     elif "procgen-1000" in FLAGS.env_name:
         example_trajectory = pretrain_dataset.sample(50, indx=np.arange(5000, 5050))
+    elif FLAGS.env_name.startswith("mw"):
+        example_trajectory = pretrain_dataset.sample(103, indx=np.arange(0, 103))
     else:
         raise NotImplementedError
 
@@ -403,7 +472,9 @@ def main(_):
     eval_logger = CsvLogger(os.path.join(FLAGS.save_dir, "eval.csv"))
     first_time = time.time()
     last_time = time.time()
-    for i in tqdm.tqdm(range(1, total_steps + 1), smoothing=0.1, dynamic_ncols=True):
+
+    # test
+    for i in tqdm(range(1, total_steps + 1), smoothing=0.1, dynamic_ncols=True):
         pretrain_batch = pretrain_dataset.sample(FLAGS.batch_size)
         agent, update_info = supply_rng(agent.pretrain_update)(pretrain_batch)
 
@@ -516,6 +587,7 @@ def main(_):
             print(f"Saving to {fname}")
             with open(fname, "wb") as f:
                 pickle.dump(save_dict, f)
+
     train_logger.close()
     eval_logger.close()
 
