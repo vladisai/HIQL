@@ -84,7 +84,6 @@ class GCDataset:
 
         batch = self.dataset.sample(batch_size, indx)
         goal_indx = self.sample_goals(indx)
-
         success = indx == goal_indx
         batch["rewards"] = success.astype(float) * self.reward_scale + self.reward_shift
         if self.terminal:

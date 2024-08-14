@@ -1,9 +1,14 @@
 from typing import Dict
+import logging
+from collections import defaultdict
+import time
+
 import jax
 import gym
 import numpy as np
-from collections import defaultdict
-import time
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 
 def supply_rng(f, rng=jax.random.PRNGKey(0)):
@@ -122,8 +127,18 @@ def evaluate_with_trajectories(
 
             observation = observation[0]
             obs_goal = goal_img
+        elif env_name.startswith("mw"):
+            from src.envs.metaworld import get_goal_state, build_metaworld_env
+
+            env = build_metaworld_env(env.cfg)
+            observation, info = env.reset()
+
+            print("Getting goal state")
+            obs_goal, img_goal = get_goal_state(env, env_name)
         else:
             raise NotImplementedError
+
+        log.info(f"Starting episode {i} with goal {obs_goal.sum()}")
 
         render = []
         step = 0
@@ -184,6 +199,8 @@ def evaluate_with_trajectories(
                     done = True
 
                 cur_render = next_observation
+            elif env_name.startswith("mw"):
+                next_observation, r, trunc, done, info = env.step(np.array(action))
 
             step += 1
 
@@ -243,6 +260,12 @@ def evaluate_with_trajectories(
                     elif "calvin" in env_name:
                         cur_frame = env.render(mode="rgb_array").transpose(2, 0, 1)
                         render.append(cur_frame)
+                    elif env_name.startswith("mw"):
+                        state_render = env.render().transpose(2, 0, 1)
+                        state_render_w_goal = np.concatenate(
+                            [state_render, img_goal], axis=1
+                        )
+                        render.append(state_render_w_goal)
             transition = dict(
                 observation=observation,
                 next_observation=next_observation,
