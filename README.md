@@ -10,9 +10,9 @@ pip install -r requirements.txt --no-deps
 pip install "jax[cuda12]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 ```
 
-Alternatively, you can use my singularity containers `/scratch/us441/singularity/hiql.ext3` and `/scratch/us441/singularity/hiql_amd.ext3`.
+Alternatively, you can use my singularity container `/scratch/us441/singularity/hiql.ext3`.
 
-I use them with conda overlay: `/scratch/work/public/singularity/anaconda3-2024.06-1.sqf`, and this OS image: `/scratch/work/public/singularity/cuda12.2.2-cudnn8.9.4-devel-ubuntu22.04.3.sif` for nvidia and `/scratch/work/public/singularity/rocm6.1.0-ubuntu22.04.4.sif` for AMD.
+I use them with conda overlay: `/scratch/work/public/singularity/anaconda3-2024.06-1.sqf`, and this OS image: `/scratch/work/public/singularity/cuda12.2.2-cudnn8.9.4-devel-ubuntu22.04.3.sif`.
 
 The full script I use to run singularity is here: `/scratch/us441/Work/scripts/singularity/hiql.sh`.
 
