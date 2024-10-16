@@ -280,10 +280,3 @@ def get_goal_state(env, env_name):
 
     goal_obs = last_state["obs"] if env.cfg.visual else last_state["proprio"]
     return goal_obs, last_state["obs"][:3]
-
-
-def reset_warmup_env(env):
-    obs, info = env.reset()
-    for i in range(3):
-        obs, _, trunc, termn, info = env.step(np.zeros(env.action_space.shape))
-    return obs, info

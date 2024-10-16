@@ -6,9 +6,17 @@ from jaxrl_m.dataset import Dataset
 from jaxrl_m.evaluation import EpisodeMonitor
 
 
+class ResetInfoAdapter(gym.Wrapper):
+    """Returns 2 values (including info) from reset."""
+
+    def reset(self, **kwargs):
+        return super().reset(**kwargs), {}
+
+
 def make_env(env_name: str):
     env = gym.make(env_name)
     env = EpisodeMonitor(env)
+    # env = ResetInfoAdapter(env)
     return env
 
 

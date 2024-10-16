@@ -15,6 +15,18 @@ def get_mw_dataset(path: str, visual: bool = False):
 
     done = episode[1:] != episode[:-1]
     done = np.concatenate((done, [True]))
+
+    nan_mask_reward = np.isnan(reward)
+    nan_mask_action = np.isnan(action).any(axis=1)
+    nan_mask = nan_mask_reward | nan_mask_action
+
+    # drop values with nan
+    obs = obs[~nan_mask]
+    action = action[~nan_mask]
+    reward = reward[~nan_mask]
+    done = done[~nan_mask]
+    episode = episode[~nan_mask]
+
     # get the episodes idxs
     episode_idxs = episode[done]
 
@@ -23,7 +35,7 @@ def get_mw_dataset(path: str, visual: bool = False):
 
     # only keep the ones that are 103 long
 
-    episode_idxs_mask = lengths != 103
+    episode_idxs_mask = lengths != 100
     filtered_episode_idxs = episode_idxs[episode_idxs_mask]
     # filter all fields by the episode idxs
     filtered_idxs = (episode[:, None] != filtered_episode_idxs).all(axis=1)

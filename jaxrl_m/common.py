@@ -3,11 +3,25 @@ import flax
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+from flax.core import frozen_dict
 from jax import tree_util
 import optax
 import functools
 
 nonpytree_field = functools.partial(flax.struct.field, pytree_node=False)
+
+
+def freeze_state(state):
+    if isinstance(state, dict):
+        return frozen_dict.freeze(state)
+    elif isinstance(state, (list, tuple)) and not hasattr(state, "_fields"):
+        # For regular lists and tuples
+        return type(state)(freeze_state(x) for x in state)
+    elif isinstance(state, tuple) and hasattr(state, "_fields"):
+        # For named tuples, reconstruct the named tuple
+        return type(state)(*(freeze_state(x) for x in state))
+    else:
+        return state
 
 
 def shard_batch(batch):
@@ -137,7 +151,9 @@ class TrainState(flax.struct.PyTreeNode):
             and `opt_state` updated by applying `grads`, and additional attributes
             replaced as specified by `kwargs`.
         """
-        updates, new_opt_state = self.tx.update(grads, self.opt_state, self.params)
+        # make any dicts into frozen dicts in opt_state
+        frozen_opt_state = freeze_state(self.opt_state)
+        updates, new_opt_state = self.tx.update(grads, frozen_opt_state, self.params)
         new_params = optax.apply_updates(self.params, updates)
 
         return self.replace(

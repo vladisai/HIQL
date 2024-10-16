@@ -2,6 +2,7 @@ from typing import Iterable, Optional
 
 import numpy as np
 import jax.numpy as jnp
+import flax
 import wandb
 
 Array = jnp.ndarray
@@ -181,3 +182,17 @@ class CsvLogger:
     def close(self):
         if self.file is not None:
             self.file.close()
+
+
+def build_param_norms_dict(params, current_dict=None, prefix_key="weight_norms/"):
+    if current_dict is None:
+        current_dict = {}
+
+    for k, v in params.items():
+        if isinstance(v, dict) or isinstance(v, flax.core.frozen_dict.FrozenDict):
+            result = build_param_norms_dict(v, current_dict, prefix_key + k + ".")
+            current_dict.update(result)
+        # if it's a jax array, we print the shape
+        elif isinstance(v, jnp.ndarray):
+            current_dict[prefix_key + k] = jnp.linalg.norm(v)
+    return current_dict

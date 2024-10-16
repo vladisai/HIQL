@@ -76,6 +76,7 @@ class GCDataset:
 
         # Goals at the current state
         goal_indx = np.where(np.random.rand(batch_size) < p_currgoal, indx, goal_indx)
+
         return goal_indx
 
     def sample(self, batch_size: int, indx=None):

@@ -1,3 +1,15 @@
+import distrax
+import yaml
+
+
+def custom_representer(dumper, data):
+    return dumper.represent_str(str(data))  # Convert the object to a string
+
+
+yaml.representer.SafeRepresenter.add_multi_representer(
+    distrax.MultivariateNormalDiag, custom_representer
+)
+
 import os
 
 os.environ["MUJOCO_GL"] = "egl"  # noqa
@@ -26,11 +38,12 @@ from src.gc_dataset import GCSDataset
 from jaxrl_m.wandb import setup_wandb, default_wandb_config
 import wandb
 from jaxrl_m.evaluation import supply_rng, evaluate_with_trajectories, EpisodeMonitor
+import distrax
 
 from ml_collections import config_flags
 import pickle
 
-from src.utils import record_video, CsvLogger
+from src.utils import record_video, CsvLogger, build_param_norms_dict
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("env_name", "antmaze-large-diverse-v2", "")
@@ -73,6 +86,8 @@ flags.DEFINE_string("mw_dataset_path", None, "")
 flags.DEFINE_string("algo_name", None, "")  # Not used, only for logging
 
 flags.DEFINE_string("name_suffix", "", "")
+
+flags.DEFINE_string("enc_path", None, "")
 
 wandb_config = default_wandb_config()
 wandb_config.update(
@@ -145,6 +160,19 @@ def get_traj_v(agent, trajectory):
     }
 
 
+def print_param_dict(param_dict, indent_level=0, indents_per_level=4):
+    indent_str = " " * indent_level * indents_per_level
+    for k, v in param_dict.items():
+        if isinstance(v, dict) or isinstance(v, flax.core.frozen_dict.FrozenDict):
+            print(f"{indent_str}{k}:")
+            print_param_dict(v, indent_level + 1, indents_per_level)
+        # if it's a jax array, we print the shape
+        elif isinstance(v, jnp.ndarray):
+            print(f"{indent_str}{k}: {v.shape}")
+        else:
+            print(f"{indent_str}{k} (unknown type): {v}")
+
+
 def main(_):
     g_start_time = int(datetime.now().timestamp())
 
@@ -200,7 +228,7 @@ def main(_):
         env_name = FLAGS.env_name
 
         if "ultra" in FLAGS.env_name:
-            import d4rl_ext
+            import d4rl_ext  # noqa
             import gym
 
             env = gym.make(env_name)
@@ -397,7 +425,7 @@ def main(_):
     else:
         raise NotImplementedError
 
-    obs, info = env.reset()
+    env.reset()
 
     # def debug_and_exit():
     #     from src.envs.metaworld import get_goal_state
@@ -434,7 +462,7 @@ def main(_):
 
     # debug_and_exit()
 
-    log.info(f"Creating GCSDataset")
+    log.info("Creating GCSDataset")
     pretrain_dataset = GCSDataset(dataset, **FLAGS.gcdataset.to_dict())
     total_steps = FLAGS.pretrain_steps
     example_batch = dataset.sample(1)
@@ -449,8 +477,19 @@ def main(_):
         discrete=discrete,
         use_layer_norm=FLAGS.use_layer_norm,
         rep_type=FLAGS.rep_type,
+        enc_path=FLAGS.enc_path,
         **FLAGS.config,
     )
+
+    print_param_dict(agent.network.params)
+
+    # view the model with tabulate
+
+    tabulate_fn = flax.linen.tabulate(
+        agent.network.model_def,
+        rngs=jax.random.PRNGKey(0),
+    )
+    print(tabulate_fn(example_batch["observations"], example_batch["observations"]))
 
     # For debugging metrics
     if "antmaze" in FLAGS.env_name:
@@ -488,6 +527,13 @@ def main(_):
                 time.time() - last_time
             ) / FLAGS.log_interval
             train_metrics["time/total_time"] = time.time() - first_time
+
+            for k, v in train_metrics.items():
+                if isinstance(v, jnp.ndarray):
+                    train_metrics[k] = float(v)
+
+            train_metrics.update(build_param_norms_dict(agent.network.params))
+
             last_time = time.time()
             wandb.log(train_metrics, step=i)
             train_logger.log(train_metrics, step=i)

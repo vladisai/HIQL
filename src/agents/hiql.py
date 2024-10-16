@@ -19,6 +19,8 @@ from src.special_networks import (
     HierarchicalActorCritic,
     RelativeRepresentation,
     MonolithicVF,
+    FrozenTDMPCEncoder,
+    OneLayer,
 )
 
 
@@ -55,8 +57,24 @@ def compute_actor_loss(agent, batch, network_params):
         method="actor",
         params=network_params,
     )
+
     log_probs = dist.log_prob(batch["actions"])
     actor_loss = -(exp_a * log_probs).mean()
+
+    # # Use jax.lax.cond to conditionally handle NaN values
+    # def check_nan(x):
+    #     print("Found NaN in actor loss")
+    #     return x
+
+    # def no_nan(x):
+    #     return x
+
+    # actor_loss = jax.lax.cond(
+    #     jnp.any(jnp.isnan(actor_loss)),
+    #     check_nan,
+    #     no_nan,
+    #     actor_loss,
+    # )
 
     return actor_loss, {
         "actor_loss": actor_loss,
@@ -305,6 +323,7 @@ def create_learner(
     use_layer_norm: int = 0,
     rep_type: str = "state",
     use_waypoints: int = 0,
+    enc_path: str = None,
     **kwargs,
 ):
 
@@ -324,6 +343,7 @@ def create_learner(
         from jaxrl_m.vision import encoders
 
         visual_encoder = encoders[encoder]
+        obs_shape = observations.shape[-1]
 
         def make_encoder(bottleneck):
             if bottleneck:
@@ -354,6 +374,14 @@ def create_learner(
         high_policy_state_encoder = make_encoder(bottleneck=False)
         high_policy_goal_encoder = make_encoder(bottleneck=False)
     else:
+        if enc_path is not None:
+            rep_encoder = lambda: FrozenTDMPCEncoder(
+                frozen_params=FrozenTDMPCEncoder.load_frozen_weights(enc_path),
+            )
+            obs_shape = 512
+        else:
+            rep_encoder = None
+            obs_shape = observations.shape[-1]
 
         def make_encoder(bottleneck):
             if bottleneck:
@@ -363,6 +391,7 @@ def create_learner(
                     layer_norm=use_layer_norm,
                     rep_type=rep_type,
                     bottleneck=True,
+                    rep_encoder=rep_encoder,
                 )
             else:
                 return RelativeRepresentation(
@@ -371,10 +400,18 @@ def create_learner(
                     layer_norm=use_layer_norm,
                     rep_type=rep_type,
                     bottleneck=False,
+                    rep_encoder=rep_encoder,
                 )
 
-        if use_rep:
+        if use_rep and rep_encoder is None:
             value_goal_encoder = make_encoder(bottleneck=True)
+        elif rep_encoder is not None:
+            value_goal_encoder = make_encoder(bottleneck=use_waypoints)
+            value_state_encoder = make_encoder(bottleneck=False)
+            policy_state_encoder = make_encoder(bottleneck=False)
+            policy_goal_encoder = make_encoder(bottleneck=False)
+            high_policy_state_encoder = make_encoder(bottleneck=False)
+            high_policy_goal_encoder = make_encoder(bottleneck=False)
 
     value_def = MonolithicVF(
         hidden_dims=value_hidden_dims, use_layer_norm=use_layer_norm, rep_dim=rep_dim
@@ -393,7 +430,7 @@ def create_learner(
             tanh_squash_distribution=False,
         )
 
-    high_action_dim = observations.shape[-1] if not use_rep else rep_dim
+    high_action_dim = obs_shape if not use_rep else rep_dim
     high_actor_def = Policy(
         actor_hidden_dims,
         action_dim=high_action_dim,
@@ -404,6 +441,7 @@ def create_learner(
 
     network_def = HierarchicalActorCritic(
         encoders={
+            "rep": None,
             "value_state": value_state_encoder,
             "value_goal": value_goal_encoder,
             "policy_state": policy_state_encoder,
