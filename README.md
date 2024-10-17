@@ -1,7 +1,12 @@
 # HIQL: Offline Goal-Conditioned RL with Latent States as Actions
 
-## NYU cluster setup
+## Git clone command
+We add the recursive command to clone the submodules:
+```
+git clone --recurse-submodules git@github.com:vladisai/HIQL.git
+```
 
+## NYU cluster setup
 This is how I set it up:
 ```
 conda create --name hiql python=3.9
