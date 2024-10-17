@@ -1,0 +1,3 @@
+[submodule "hjepa"]
+	path = hjepa
+	url = git@github.com:vladisai/HJEPA.git
