@@ -89,6 +89,8 @@ flags.DEFINE_string("name_suffix", "", "")
 
 flags.DEFINE_string("enc_path", None, "")
 
+flags.DEFINE_bool("use_wandb", True, "Whether to use wandb for logging")
+
 wandb_config = default_wandb_config()
 wandb_config.update(
     {
@@ -209,18 +211,21 @@ def main(_):
     FLAGS.config["policy_train_rep"] = FLAGS.policy_train_rep
 
     # Create wandb logger
-    params_dict = {**FLAGS.gcdataset.to_dict(), **FLAGS.config.to_dict()}
-    FLAGS.wandb["name"] = FLAGS.wandb["exp_descriptor"] = exp_name
-    FLAGS.wandb["group"] = FLAGS.wandb["exp_prefix"] = FLAGS.run_group
-    setup_wandb(params_dict, **FLAGS.wandb)
+    if FLAGS.use_wandb:
+        params_dict = {**FLAGS.gcdataset.to_dict(), **FLAGS.config.to_dict()}
+        FLAGS.wandb["name"] = FLAGS.wandb["exp_descriptor"] = exp_name
+        FLAGS.wandb["group"] = FLAGS.wandb["exp_prefix"] = FLAGS.run_group
+        setup_wandb(params_dict, **FLAGS.wandb)
 
-    FLAGS.save_dir = os.path.join(
-        FLAGS.save_dir,
-        wandb.run.project,
-        wandb.config.exp_prefix,
-        wandb.config.experiment_id,
-    )
-    os.makedirs(FLAGS.save_dir, exist_ok=True)
+        FLAGS.save_dir = os.path.join(
+            FLAGS.save_dir,
+            wandb.run.project,
+            wandb.config.exp_prefix,
+            wandb.config.experiment_id,
+        )
+        os.makedirs(FLAGS.save_dir, exist_ok=True)
+    else:
+        log.info("wandb disabled")
 
     goal_info = None
     discrete = False
@@ -535,7 +540,8 @@ def main(_):
             train_metrics.update(build_param_norms_dict(agent.network.params))
 
             last_time = time.time()
-            wandb.log(train_metrics, step=i)
+            if FLAGS.use_wandb:
+                wandb.log(train_metrics, step=i)
             train_logger.log(train_metrics, step=i)
 
         if i == 1 or i % FLAGS.eval_interval == 0:
@@ -620,7 +626,8 @@ def main(_):
                 )
                 eval_metrics["v"] = wandb.Image(image_v)
 
-            wandb.log(eval_metrics, step=i)
+            if FLAGS.use_wandb:
+                wandb.log(eval_metrics, step=i)
             eval_logger.log(eval_metrics, step=i)
 
         if i % FLAGS.save_interval == 0:
